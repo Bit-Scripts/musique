@@ -1,11 +1,12 @@
 import sys
 import os
-import time
+import random
 import numpy as np
 from pydub import AudioSegment
-from PyQt5.QtWidgets import QMainWindow, QApplication, QWidget, QLabel, QPushButton, QVBoxLayout, QSlider, QHBoxLayout, QFileDialog, QListWidget, QGraphicsRectItem
+from PyQt5.QtWidgets import QMainWindow, QApplication, QWidget, QLabel, QPushButton, QVBoxLayout, QSlider, QHBoxLayout, QFileDialog, QListWidget
 from PyQt5.QtGui import QPixmap, QIcon, QLinearGradient, QBrush, QColor, QRegion, QPainter, QPainterPath, QFont
-from PyQt5.QtCore import Qt, QTimer, QThread, pyqtSignal, Qt, QSize
+from PyQt5.QtCore import Qt, QTimer, QThread, pyqtSignal, Qt, QSize, QPoint, QRect, QStandardPaths
+from PyQt5.QtSvg import QSvgWidget
 import pygame
 import pyqtgraph as pg
 from mutagen.mp3 import MP3
@@ -25,15 +26,72 @@ class WaveformWorker(QThread):
         samples = np.array(audio.get_array_of_samples())[::1000]  # Par exemple, prenez un échantillon toutes les 1000 valeurs
         self.waveformReady.emit(samples)
 
+class movable_label(QLabel):
+    def __init__(self, parent):
+        super().__init__(parent)
+
+        self.parent = parent
+
+        self.setStyleSheet("background-color: #ccc")
+        self.setMinimumHeight(30)
+
+    def mousePressEvent(self, e):
+        if e.button() == Qt.LeftButton:
+            if self.parent.press_control == 0:
+                self.pos = e.pos()
+                self.main_pos = self.parent.pos()
+        super().mousePressEvent(e)
+    def mouseMoveEvent(self, e):
+        if self.parent.cursor().shape() == Qt.ArrowCursor:
+            self.last_pos = e.pos() - self.pos
+            self.main_pos += self.last_pos
+            self.parent.move(self.main_pos)
+        super(movable_label, self).mouseMoveEvent(e)
+
 class MusicPlayer(QMainWindow):
     def __init__(self):
         super().__init__()
-        self.setWindowFlags(Qt.FramelessWindowHint | Qt.WindowStaysOnTopHint)
-        self.filePath = '' #'/home/paul/Musique/Tomawok - 8 millions d\'indiens.mp3'
+        self.setWindowFlags(Qt.FramelessWindowHint)
+        self.central = QWidget()
+
+        self.vbox = QVBoxLayout(self.central)
+        self.vbox.addWidget(movable_label(self))
+        self.vbox.addWidget(QPushButton("Click"))
+        self.vbox.setAlignment(Qt.AlignTop)
+        self.vbox.setSpacing(0)
+        self.vbox.setContentsMargins(0,0,0,0)
+        
+        self.press_control = 0        
+        
+        self.setCentralWidget(self.central)
+        self.resize(800,500)
+        self.show()  
+        
+        if getattr(sys, 'frozen', False):
+            # Exécuté en mode binaire
+            self.application_path = sys._MEIPASS
+        else:
+            # Exécuté en mode script
+            self.application_path = os.path.dirname(os.path.abspath(__file__))
+        
+        self.filePath = ''
         
         self.samples = None
         
         self.is_playing = False
+        
+        self.is_random = False
+        
+        self.repeat_state = 0
+        
+        self.orderedPlaylist = {}
+        
+        self.track_list = []
+        
+        self.is_manual_track_change = False
+        self.manual_change_timer = QTimer(self)
+        self.manual_change_timer.timeout.connect(self.reset_manual_track_change)
+        self.manual_change_timer.setSingleShot(True)
 
         # Obtenez la durée totale de la piste ici et convertissez-la en millisecondes
         self.total_duration = 0 #int(self.get_audio_length(self.filePath) * 1000)  # Durée totale en millisecondes
@@ -47,10 +105,10 @@ class MusicPlayer(QMainWindow):
         
         self.is_playing = False
         
-        self.track_paths = []  # Liste pour stocker les chemins des fichiers
+        self.track_paths = list()  # Liste pour stocker les chemins des fichiers
         self.current_track_index = 0 
         
-        icon_path = './Music bot.png'  # Chemin vers votre icône
+        icon_path = os.path.join(self.application_path, 'data', 'Music bot.png')  # Chemin vers votre icône
         self.setWindowIcon(QIcon(icon_path))
 
         # Initialisation de l'interface utilisateur après avoir défini total_duration
@@ -60,9 +118,187 @@ class MusicPlayer(QMainWindow):
         pygame.mixer.music.set_endevent(pygame.USEREVENT)
         self.end_event = pygame.USEREVENT
         
+    def eventFilter(self, obj, e):
+        #hovermoveevent
+        if e.type() == 129:
+            if self.press_control == 0:
+                self.pos_control(e)#cursor position control for cursor shape setup
+
+        #mousepressevent
+        if e.type() == 2:
+            self.press_control = 1
+            self.origin = self.mapToGlobal(e.pos())
+            self.ori_geo = self.geometry()
+
+        #mousereleaseevent
+        if e.type() == 3:
+
+            self.press_control = 0
+            self.pos_control(e)
+        
+        #mosuemoveevent
+        if e.type() == 5:
+            if self.cursor().shape() != Qt.ArrowCursor:
+                self.resizing(self.origin, e, self.ori_geo, self.value)
+
+        return True
+
+    def pos_control(self, e):
+        rect = self.rect()
+        top_left = rect.topLeft()
+        top_right = rect.topRight()
+        bottom_left = rect.bottomLeft()
+        bottom_right = rect.bottomRight()
+        pos = e.pos()
+
+        #top catch
+        if pos in QRect(QPoint(top_left.x()+5,top_left.y()), QPoint(top_right.x()-5,top_right.y()+5)):
+            self.setCursor(Qt.SizeVerCursor)
+            self.value = 1
+
+        #bottom catch
+        elif pos in QRect(QPoint(bottom_left.x()+5,bottom_left.y()), QPoint(bottom_right.x()-5,bottom_right.y()-5)):
+            self.setCursor(Qt.SizeVerCursor)
+            self.value = 2
+        
+        #right catch
+        elif pos in QRect(QPoint(top_right.x()-5,top_right.y()+5), QPoint(bottom_right.x(),bottom_right.y()-5)):
+            self.setCursor(Qt.SizeHorCursor)
+            self.value = 3
+
+        #left catch
+        elif pos in QRect(QPoint(top_left.x()+5,top_left.y()+5), QPoint(bottom_left.x(),bottom_left.y()-5)):
+            self.setCursor(Qt.SizeHorCursor)
+            self.value = 4
+
+        #top_right catch
+        elif pos in QRect(QPoint(top_right.x(),top_right.y()), QPoint(top_right.x()-5,top_right.y()+5)):
+            self.setCursor(Qt.SizeBDiagCursor)
+            self.value = 5
+
+        #botom_left catch
+        elif pos in QRect(QPoint(bottom_left.x(),bottom_left.y()), QPoint(bottom_left.x()+5,bottom_left.y()-5)):
+            self.setCursor(Qt.SizeBDiagCursor)
+            self.value = 6
+
+        #top_left catch
+        elif pos in QRect(QPoint(top_left.x(),top_left.y()), QPoint(top_left.x()+5,top_left.y()+5)):
+            self.setCursor(Qt.SizeFDiagCursor)
+            self.value = 7
+
+        #bottom_right catch
+        elif pos in QRect(QPoint(bottom_right.x(),bottom_right.y()), QPoint(bottom_right.x()-5,bottom_right.y()-5)):
+            self.setCursor(Qt.SizeFDiagCursor)
+            self.value = 8
+        
+        #default
+        else:
+            self.setCursor(Qt.ArrowCursor)       
+
+    def resizing(self, ori, e, geo, value):    
+        #top_resize
+        if self.value == 1:
+            last = self.mapToGlobal(e.pos())-ori
+            first = geo.height()
+            first -= last.y()
+            Y = geo.y()
+            Y += last.y()
+
+            if first > self.minimumHeight():
+                self.setGeometry(geo.x(), Y, geo.width(), first)                    
+        
+        #bottom_resize
+        if self.value == 2:
+            last = self.mapToGlobal(e.pos())-ori
+            first = geo.height()
+            first += last.y()
+            self.resize(geo.width(), first)
+
+        #right_resize
+        if self.value == 3:
+            last = self.mapToGlobal(e.pos())-ori
+            first = geo.width()
+            first += last.x()
+            self.resize(first, geo.height())
+
+        #left_resize
+        if self.value == 4:
+            last = self.mapToGlobal(e.pos())-ori
+            first = geo.width()
+            first -= last.x()
+            X = geo.x()
+            X += last.x()
+
+            if first > self.minimumWidth():
+                self.setGeometry(X, geo.y(), first, geo.height())
+
+        #top_right_resize
+        if self.value == 5:
+            last = self.mapToGlobal(e.pos())-ori
+            first_width = geo.width()
+            first_height = geo.height()
+            first_Y = geo.y()
+            first_width += last.x()
+            first_height -= last.y()
+            first_Y += last.y()
+                
+            if first_height > self.minimumHeight():
+                self.setGeometry(geo.x(), first_Y, first_width, first_height)
+
+        #bottom_right_resize
+        if self.value == 6:
+            last = self.mapToGlobal(e.pos())-ori
+            first_width = geo.width()
+            first_height = geo.height()
+            first_X = geo.x()
+            first_width -= last.x()
+            first_height += last.y()
+            first_X += last.x()
+                
+            if first_width > self.minimumWidth():
+                self.setGeometry(first_X, geo.y(), first_width, first_height)
+
+        #top_left_resize
+        if self.value == 7:
+            last = self.mapToGlobal(e.pos())-ori
+            first_width = geo.width()
+            first_height = geo.height()
+            first_X = geo.x()
+            first_Y = geo.y()
+            first_width -= last.x()
+            first_height -= last.y()
+            first_X += last.x()
+            first_Y += last.y()
+                
+            if first_height > self.minimumHeight() and first_width > self.minimumWidth():
+                self.setGeometry(first_X, first_Y, first_width, first_height)
+
+        #bottom_right_resize
+        if self.value == 8:
+            last = self.mapToGlobal(e.pos())-ori
+            first_width = geo.width()
+            first_height = geo.height()
+            first_width += last.x()
+            first_height += last.y()                    
+            
+            self.setGeometry(geo.x(), geo.y(), first_width, first_height)  
+        
+    def mousePressEvent(self, event):
+        if event.button() == Qt.LeftButton:
+            self.oldPos = event.globalPos()
+
+    def mouseMoveEvent(self, event):
+        if event.buttons() & Qt.LeftButton:
+            delta = QPoint(event.globalPos() - self.oldPos)
+            self.move(self.x() + delta.x(), self.y() + delta.y())
+            self.oldPos = event.globalPos()
+
+    def mouseReleaseEvent(self, event):
+        self.oldPos = None
+        
     def handle_events(self):
         for event in pygame.event.get():
-            if event.type == self.end_event:
+            if event.type == self.end_event and not self.is_manual_track_change:
                 self.play_next_track()
         
     def get_audio_length(self, file_path):
@@ -70,14 +306,61 @@ class MusicPlayer(QMainWindow):
         audio_length = audio.info.length  # durée en secondes
         return audio_length
 
+    def load_svg_in_label(self, label, svg_path, size=QSize(30, 30)):
+        svg_widget = QSvgWidget(svg_path)
+        svg_renderer = svg_widget.renderer()
+        pixmap = QPixmap(size)
+        pixmap.fill(Qt.transparent)
+        painter = QPainter(pixmap)
+        svg_renderer.render(painter)
+        painter.end()
+        label.setPixmap(pixmap)
+
     def initUI(self):
-        # self.setFixedSize(400, 600)
         self.setWindowFlags(Qt.FramelessWindowHint)  # Remove the title bar
         self.setAttribute(Qt.WA_TranslucentBackground) 
         
-        self.minimizeButton = QPushButton("_", self)
-        self.maximizeButton = QPushButton("[ ]", self)
-        self.closeButton = QPushButton("x", self)
+        self.minimizeButton = QPushButton(self)
+        css = f"""
+            QPushButton {{
+                background-color: transparent;
+                border: none;
+                icon-size: 35px 35px;
+                icon: url('{os.path.join(self.application_path, 'data', 'reduce-one.svg')}');                 
+            }}
+            QPushButton::hover {{
+                icon: url('{os.path.join(self.application_path, 'data', 'reduce-one-hover.svg')}');
+            }}
+        """
+        self.minimizeButton.setStyleSheet(css)
+        
+        self.maximizeButton = QPushButton(self)
+        css = f"""
+            QPushButton {{
+                background-color: transparent;
+                border: none;
+                icon-size: 35px 35px;
+                icon: url('{os.path.join(self.application_path, 'data', 'add-one.svg')}');                
+            }}
+            QPushButton::hover {{
+                icon: url('{os.path.join(self.application_path, 'data', 'add-one-hover.svg')}');
+            }}
+        """
+        self.maximizeButton.setStyleSheet(css)
+        
+        self.closeButton = QPushButton(self)
+        css = f"""
+            QPushButton {{
+                background-color: transparent;
+                border: none;
+                icon-size: 35px 35px;
+                icon: url('{os.path.join(self.application_path, 'data', 'close-one.svg')}');                 
+            }}
+            QPushButton::hover {{
+                icon: url('{os.path.join(self.application_path, 'data', 'close-one-hover.svg')}');
+            }}
+        """
+        self.closeButton.setStyleSheet(css)
 
         self.minimizeButton.setFixedSize(QSize(35, 35))
         self.maximizeButton.setFixedSize(QSize(35, 35))
@@ -96,7 +379,7 @@ class MusicPlayer(QMainWindow):
 
         # Fenêtre principale
         self.setWindowTitle('BIT SCRIPTS - Musique')
-        self.setGeometry(100, 100, 400, 300)
+        self.setGeometry(100, 100, 400, 800)
         
         self.setStyleSheet("""
             QMainWindow {
@@ -107,22 +390,96 @@ class MusicPlayer(QMainWindow):
             QLabel, QPushButton {
                 color: #FFF;
             }
-
-            QPushButton {
-                background-color: #0D5E7E;
-                border-style: outset;
-                border-width: 2px;
-                border-radius: 10px;
-                border-color: #0C1428;
-                font: bold 14px;
-                min-width: 1em;
-                padding: 6px;
-            }
+            
             QPushButton::hover {
                 background-color: #0D7EAA;
             }
+
             QListWidget {
                 background-color: rgba(0,0,0,0);
+            }
+            
+            QSlider::groove:horizontal {
+                border: 1px solid #bbb;
+                background: white;
+                height: 10px;
+                border-radius: 4px;
+            }
+
+            QSlider::sub-page:horizontal {
+                background: qlineargradient(x1:0, y1:0, x2:1, y2:0,
+                    stop:0 #0D5E7E, stop:1 #0C1428);
+                border: 1px solid #777;
+                height: 10px;
+                border-radius: 4px;
+            }
+
+            QSlider::add-page:horizontal {
+                background: #fff;
+                border: 1px solid #777;
+                height: 10px;
+                border-radius: 4px;
+            }
+
+            QSlider::handle:horizontal {
+                background: qlineargradient(x1:0, y1:0, x2:1, y2:0,
+                    stop:0 #0D5E7E, stop:1 #0C1428);
+                border: 1px solid #5c5c5c;
+                width: 18px;
+                margin-top: -2px;
+                margin-bottom: -2px;
+                border-radius: 3px;
+            }
+            
+            QScrollBar:vertical {
+                border: 1px solid #999999;
+                background:white;
+                width:10px; 
+                margin: 0px 0px 0px 0px;
+            }
+            QScrollBar:horizontal {
+                border: 1px solid #999999;
+                background:white;
+                height:10px; 
+                margin: 0px 0px 0px 0px;
+            }
+            QScrollBar::handle:vertical {
+                background: qlineargradient(x1:0, y1:0, x2:1, y2:0,
+                    stop:0 #0D5E7E, stop:1 #0C1428);
+                min-height: 0px;
+            }
+            QScrollBar::handle:horizontal {
+                background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
+                    stop:0 #0D5E7E, stop:1 #0C1428);
+                min-height: 0px;
+            }
+            QScrollBar::add-line:vertical, 
+            QScrollBar::add-line:horizontal {
+                background: none;
+            }
+            QScrollBar::sub-line:vertical, 
+            QScrollBar::sub-line:horizontal {
+                background: none;
+            }
+            QScrollBar::up-arrow:vertical, 
+            QScrollBar::down-arrow:vertical, 
+            QScrollBar::up-arrow:horizontal, 
+            QScrollBar::down-arrow:horizontal {
+                background: none;
+            }
+            QScrollBar::add-page:vertical, 
+            QScrollBar::sub-page:vertical,
+            QScrollBar::add-page:horizontal, 
+            QScrollBar::sub-page:horizontal {
+                background: none;
+            }
+            
+            QPlotWidget {
+                min-height: 60px;
+            }
+
+            QListWidget {
+                min-height: 150px;
             }
         """)
         
@@ -138,7 +495,7 @@ class MusicPlayer(QMainWindow):
         self.albumArtLayout = QHBoxLayout()  # Layout pour centrer l'image de l'album
         self.albumArtLayout.addStretch()
         self.albumArtLabel = QLabel(self)
-        pixmap = QPixmap('./Music bot.png')  # Remplacez par le chemin de votre image
+        pixmap = QPixmap(os.path.join(self.application_path, 'data', './Music bot.png'))  # Remplacez par le chemin de votre image
         self.albumArtLabel.setPixmap(pixmap.scaled(200, 200, Qt.KeepAspectRatio))
         self.albumArtLayout.addWidget(self.albumArtLabel)
         self.albumArtLayout.addStretch()
@@ -170,6 +527,8 @@ class MusicPlayer(QMainWindow):
 
         # Utiliser pyqtgraph pour afficher la forme d'onde
         self.waveformPlot = pg.PlotWidget()
+        self.waveformPlot.getAxis('left').setVisible(False)
+        self.waveformPlot.getAxis('bottom').setVisible(False)
         self.set_gradient_background(self.waveformPlot)
 
         # Ajout du rect_item au PlotWidget
@@ -188,17 +547,22 @@ class MusicPlayer(QMainWindow):
         
         # Slider pour le volume
         self.volumeSlider = QSlider(Qt.Horizontal, self)
-        self.volumeSlider.setMinimum(0)
+        self.volumeSlider.setMinimum(0) 
         self.volumeSlider.setMaximum(100)
         self.volumeSlider.setValue(75)  # Mettre la valeur initiale à 75% par exemple
         self.volumeSlider.valueChanged.connect(self.setVolume)
         
-        self.volumeLabel = QLabel('Volume', self)
+        self.volumeMinusLabel = QLabel(self)
+        self.load_svg_in_label(self.volumeMinusLabel, os.path.join(self.application_path, 'data', 'volume-down.svg'))
+
+        self.volumePlusLabel = QLabel(self)
+        self.load_svg_in_label(self.volumePlusLabel, os.path.join(self.application_path, 'data', 'volume-up.svg'))
         
         # Layout pour le volume
         self.volumeLayout = QHBoxLayout()
-        self.volumeLayout.addWidget(self.volumeLabel)
+        self.volumeLayout.addWidget(self.volumeMinusLabel)
         self.volumeLayout.addWidget(self.volumeSlider) 
+        self.volumeLayout.addWidget(self.volumePlusLabel) 
 
         # Layout pour les labels et la barre de progression
         progressLayout = QHBoxLayout()
@@ -221,6 +585,19 @@ class MusicPlayer(QMainWindow):
         btnPrevious.setText('|◄◄')
         btnNext.setText('►►|')
         
+        self.randomButton = QPushButton(self)
+        self.randomButton.setIcon(QIcon(os.path.join(self.application_path, 'data', 'shuffle.svg')))
+        self.randomButton.clicked.connect(self.on_random_clicked)
+
+        self.repeatButton = QPushButton(self)
+        self.repeatButton.setIcon(QIcon(os.path.join(self.application_path, 'data', 'refresh.svg')))
+        self.repeatButton.clicked.connect(self.on_repeat_clicked)
+        
+        controlRandomRepeatLayout = QHBoxLayout()
+        controlRandomRepeatLayout.addWidget(self.randomButton)
+        controlRandomRepeatLayout.addWidget(self.repeatButton)
+        
+        
         self.listWidget = QListWidget(self)
         self.listWidget.itemClicked.connect(self.on_list_item_clicked)
         
@@ -228,14 +605,104 @@ class MusicPlayer(QMainWindow):
         controlLayout.addWidget(self.btnPlayPause)
         controlLayout.addWidget(btnNext)
         
+        controlAllLayout = QVBoxLayout()
+        controlAllLayout.addLayout(controlLayout)
+        controlAllLayout.addLayout(controlRandomRepeatLayout)
+        
+        self.apply_style_to_button(btnPrevious, True)
+        self.apply_style_to_button(self.btnPlayPause, True)
+        self.apply_style_to_button(btnNext, True)
+        self.apply_style_to_button(self.randomButton, False)
+        self.apply_style_to_button(self.repeatButton, False)
+        
+        # Créer les boutons de gestions de la playlist
+        self.addButton = QPushButton()
+        self.addButton.setIcon(QIcon(os.path.join(self.application_path, 'data', 'edit-add.svg')))
+        self.apply_style_to_button(self.addButton, True)
+        self.clearButton = QPushButton()
+        self.clearButton.setIcon(QIcon(os.path.join(self.application_path, 'data', 'edit-clear.svg')))
+        self.apply_style_to_button(self.clearButton, True)
+
+        # Connecter les signaux aux slots correspondants
+        self.addButton.clicked.connect(self.load_music)
+        self.clearButton.clicked.connect(self.on_clear_clicked)
+
+        # Ajouter les boutons à un layout
+        playlistManagerLayout = QHBoxLayout()
+        playlistManagerLayout.addWidget(self.addButton)
+        playlistManagerLayout.addWidget(self.clearButton)
+                
         # Ajouter les widgets au layout principal
         mainLayout.addLayout(self.albumArtLayout)
         mainLayout.addLayout(infoLayout)
-        # mainLayout.addWidget(self.waveformPlot)
         mainLayout.addLayout(progressLayout)
         mainLayout.addLayout(self.volumeLayout)
-        mainLayout.addLayout(controlLayout)
+        mainLayout.addLayout(controlAllLayout)
         mainLayout.addWidget(self.listWidget)
+        mainLayout.addLayout(playlistManagerLayout)
+        mainLayout.addWidget(self.waveformPlot)
+        self.clearWaveform()
+    
+    def clearWaveform(self):
+        emptyData = np.array([])
+        self.playedWaveform.setData(emptyData)
+        self.remainingWaveform.setData(emptyData)
+        
+    def on_clear_clicked(self):
+        self.current_track_index = -1
+        self.track_list.clear()
+        self.track_paths.clear()
+        self.listWidget.clear()
+        self.is_playing = False
+        pygame.mixer.music.stop()
+        self.btnPlayPause.setText('▶')
+        self.samples = None
+        self.artistLabel.setText(f'Artiste : Pas de musique chargée')
+        self.songLabel.setText(f'Musique : Pas de musique chargée')
+        pixmap = QPixmap(os.path.join(self.application_path, 'data', './Music bot.png'))  # Remplacez par le chemin de votre image
+        self.albumArtLabel.setPixmap(pixmap.scaled(200, 200, Qt.KeepAspectRatio))
+        self.clearWaveform()
+        self.btnPlayPause.disconnect()
+        self.btnPlayPause.clicked.connect(self.load_music)
+        self.waveformPlot.getAxis('left').setVisible(False)
+        self.waveformPlot.getAxis('bottom').setVisible(False)
+        
+        
+    def apply_style_to_button(self, button, activate):
+        if isinstance(button, QPushButton) and activate:
+            button.setStyleSheet("""
+                QPushButton {
+                    background-color: #0D5E7E;
+                    border-style: outset;
+                    border-width: 2px;
+                    border-radius: 10px;
+                    border-color: #0C1428;
+                    font: bold 14px;
+                    min-width: 1em;
+                    padding: 6px;
+                    icon-size: 20px;
+                }
+                QPushButton::hover {
+                    background-color: #0D7EAA;
+                }
+            """)
+        else:
+            button.setStyleSheet("""
+                QPushButton {
+                    background-color: #7E7E7E;
+                    border-style: outset;
+                    border-width: 2px;
+                    border-radius: 10px;
+                    border-color: #0C1428;
+                    font: bold 14px;
+                    min-width: 1em;
+                    padding: 6px;
+                    icon-size: 20px;
+                }
+                QPushButton::hover {
+                    background-color: #AAAAAA;
+                }
+            """)
         
     def setMaskForRoundedCorners(self):
         # Set a mask for rounded corners
@@ -274,31 +741,91 @@ class MusicPlayer(QMainWindow):
             self.showMaximized()
 
     def load_music(self):
-        if not self.is_playing and self.samples is None:
-            # Ouvrir le QFileDialog pour sélectionner la musique
-            folder_path = QFileDialog.getExistingDirectory(None, "Select Folder")
-            track_list = []
-            for file in os.listdir(folder_path):
-                if file.endswith(".mp3"):
-                    filepath = os.path.join(folder_path, file)
-                    try:
-                        audio = EasyID3(filepath)
-                        track_num = audio.get('tracknumber', ['0'])[0].split('/')[0]
-                        artist = audio.get('artist', ['Unknown Artist'])[0]
-                        title = audio.get('title', [file])[0]
-                        track_list.append((int(track_num), artist, title, file))
-                    except Exception as e:
-                        print(f"Erreur avec le fichier {filepath}: {e}")
-                        track_list.append((0, 'Unknown Artist', file, file))
-            track_list.sort()  # Trier par numéro de piste
-            self.track_paths = []
-            for track in track_list:
-                track_info = f"{track[0]}. {track[1]} - {track[2]}"
-                self.listWidget.addItem(track_info)
-                # self.track_paths.append(filepath)
-                self.track_paths.append(os.path.join(folder_path, track[3]))
+        # Ouvrir le QFileDialog pour sélectionner la musique
+        default_music_folder = QStandardPaths.writableLocation(QStandardPaths.MusicLocation)
+        folder_path = QFileDialog.getExistingDirectory(None, "Select Folder", default_music_folder, QFileDialog.DontUseNativeDialog)
+        if not folder_path:
+            return
+        if not self.track_list:
+            first = True
+        else:
+            first = False
+        temp_track_list = []
+        temp_track_paths = []
+        temp_ordered_playlist = {}
+        for file in os.listdir(folder_path):
+            if file.endswith(".mp3"):
+                filepath = os.path.join(folder_path, file)
+                try:
+                    audio = EasyID3(filepath)
+                    track_num = audio.get('tracknumber', ['0'])[0].split('/')[0]
+                    artist = audio.get('artist', ['Unknown Artist'])[0]
+                    title = audio.get('title', [file])[0]
+                    album_name = audio.get('album', ['Unknown Album'])[0]
+                    temp_track_list.append((int(track_num), artist, title, filepath))
+                    temp_track_paths.append(filepath)
+                    if album_name not in temp_ordered_playlist:
+                        temp_ordered_playlist[album_name] = []
+                    temp_ordered_playlist[album_name].append((int(track_num), artist, title, filepath))    
+                except Exception as e:
+                    print(f"Erreur avec le fichier {filepath}: {e}") 
+        self.track_list.extend(temp_track_list)
+        self.track_paths.extend(temp_track_paths)
+        for album in temp_ordered_playlist:
+            if album not in self.orderedPlaylist:
+                self.orderedPlaylist[album] = []
+            self.orderedPlaylist[album].extend(temp_ordered_playlist[album])
+        self.random_order()
+        if not self.is_playing and first:
             self.play_track(0)
         
+        # Mettre à jour le bouton pour qu'il fonctionne maintenant comme Play/Pause
+        self.btnPlayPause.disconnect()
+        self.btnPlayPause.clicked.connect(self.toggle_play_pause)
+        if first:
+            self.toggle_play_pause()
+
+    def on_random_clicked(self):
+        self.is_random = not self.is_random
+
+        if self.is_random:
+            self.random_order()
+            self.apply_style_to_button(self.randomButton, True)
+        else:
+            self.restore_original_order()
+            self.apply_style_to_button(self.randomButton, False)
+
+        # Mettre à jour self.current_track_index avec la nouvelle position de la chanson actuelle
+        if self.filePath:
+            try:
+                self.current_track_index = self.track_paths.index(self.filePath)
+            except ValueError:
+                print("Chanson actuelle non trouvée dans la liste de pistes.")
+                self.current_track_index = 0
+    
+    def random_order(self):
+        if self.is_random:
+            combined_list = list(zip(self.track_list, self.track_paths))
+            random.shuffle(combined_list)
+            self.track_list, self.track_paths = map(list, zip(*combined_list))
+        self.update_list_widget()
+
+    def restore_original_order(self):
+        self.track_paths = []
+        self.listWidget.clear()
+        for album in self.orderedPlaylist:
+            for track in self.orderedPlaylist[album]:
+                track_num, artist, title, filepath = track
+                self.listWidget.addItem(f"{track_num}. {artist} - {title}")
+                self.track_paths.append(filepath)
+
+    def update_list_widget(self):
+        self.listWidget.clear()
+        self.track_paths.clear()
+        for track in self.track_list:
+            self.listWidget.addItem(f"{track[0]}. {track[1]} - {track[2]}")
+            self.track_paths.append(track[3])
+            
     def toggle_play_pause(self):
         # Vérifiez d'abord si pygame.mixer est initialisé
         if not pygame.mixer.get_init():
@@ -314,6 +841,7 @@ class MusicPlayer(QMainWindow):
             self.is_playing = False
         else:
             if pygame.mixer.music.get_pos() == -1:  # Si la musique n'a jamais été jouée ou a fini
+                self.current_position = 0
                 pygame.mixer.music.play()
             else:
                 pygame.mixer.music.unpause()  # Si la musique a été mise en pause, la reprendre
@@ -321,6 +849,7 @@ class MusicPlayer(QMainWindow):
             self.is_playing = True
             
     def on_list_item_clicked(self, item):
+        self.initiate_manual_track_change()
         index = self.listWidget.row(item)
         self.play_track(index)
         
@@ -330,21 +859,83 @@ class MusicPlayer(QMainWindow):
             self.play_track(self.current_track_index)
 
     def play_next_track(self):
-        if self.current_track_index < len(self.track_paths) - 1:
-            self.current_track_index += 1
-            self.play_track(self.current_track_index)
-            pygame.mixer.music.play()
+        if self.repeat_state == 0:
+            # Si on est à la fin de la playlist, arrêter ou recommencer depuis le début
+            if self.current_track_index < len(self.track_paths) - 1:
+                self.current_track_index += 1
+            else:
+                self.current_track_index = 0  # Optionnel : recommencer la playlist
+                self.reinit_play(self.current_track_index)
+                return  # Arrêter la lecture si vous ne souhaitez pas recommencer automatiquement
+
+        elif self.repeat_state == 1:
+            # Répéter la playlist entière
+            self.current_track_index = (self.current_track_index + 1) % len(self.track_paths)
+
+        elif self.repeat_state == 2:
+            # Répéter le morceau actuel, donc ne pas changer l'index
+            pass
+
+        self.play_track(self.current_track_index)
+        pygame.mixer.music.play()
+        
+    def reinit_play(self, index):
+        if index >= len(self.track_paths) or index < 0:
+            return
+        # Choisir la chanson portant l'index demandé
+        self.current_track_index = index
+        # Récupérer le chemin d'accès de la chanson choisie
+        self.filePath = self.track_paths[self.current_track_index]
+        # Précharger la chanson choisie au cas où l'utilisateur décide de relancer la lecture
+        pygame.mixer.music.load(self.filePath)
+
+        try:
+            # Lire les métadonnées du fichier MP3
+            audio = EasyID3(self.filePath)
+            artist = audio.get('artist', ['Unknown Artist'])[0]
+            title = audio.get('title', ['Unknown Title'])[0]
+            # Mettre à jour l'interface graphique avec les métadonnées
+            self.artistLabel.setText(f'Artiste : {artist}')
+            self.songLabel.setText(f'Musique : {title}')
+        except Exception as e:
+            print(f"Erreur lors de la lecture des métadonnées: {e}")
+            # Mettre à jour l'interface graphique avec des valeurs par défaut
+            self.artistLabel.setText('Artiste : Inconnu')
+            self.songLabel.setText('Musique : Inconnue')
+
+        # Remettre le lecteur à zéro
+        pygame.mixer.music.stop()
+        self.btnPlayPause.setText('▶')
+
+        # Mettre à jour la forme d'onde par rapport à la musique choisie
+        self.loadWaveform()
 
     def on_btn_previous_clicked(self):
+        self.initiate_manual_track_change()
         if pygame.mixer.music.get_pos() > 3000:  # Si plus de 3 secondes de la chanson ont joué
+            self.current_position = 0
             pygame.mixer.music.play()  # Rejouer la chanson actuelle depuis le début
         else:
             self.play_previous_track()  # Sinon, passer à la chanson précédente
 
     def on_btn_next_clicked(self):
+        self.initiate_manual_track_change()
         self.play_next_track()
+        
+    def initiate_manual_track_change(self):
+        if self.is_playing:
+            pygame.mixer.music.stop()  # Arrête la piste actuelle
+            self.is_playing = False
+        self.is_manual_track_change = True
+        QTimer.singleShot(3000, self.reset_manual_track_change)  # Remet le flag à False après 3 secondes
+
+    def reset_manual_track_change(self):
+        pygame.mixer.music.play()
+        self.is_manual_track_change = False
 
     def play_track(self, index):
+        # print('play_track:',self.track_paths)
+        # print('play_track:',len(self.track_paths))
         if 0 <= index < len(self.track_paths):
             
             if not pygame.mixer.get_init():
@@ -385,21 +976,34 @@ class MusicPlayer(QMainWindow):
                 print("Aucune image de pochette trouvée.")
             
             self.total_duration = int(self.get_audio_length(self.filePath) * 1000)  # Durée totale en millisecondes
+        
+    def on_repeat_clicked(self):
+        if self.repeat_state < 2:
+            self.repeat_state += 1
+        else:
+            self.repeat_state = 0
+        if self.repeat_state == 2:
+            self.repeatButton.setIcon(QIcon(os.path.join(self.application_path, 'data', 'refresh-1.svg')))
+        else:
+            self.repeatButton.setIcon(QIcon(os.path.join(self.application_path, 'data', 'refresh.svg')))
+        if self.repeat_state == 1 or self.repeat_state == 2:
+            self.apply_style_to_button(self.repeatButton, True)
+        else:
+            self.apply_style_to_button(self.repeatButton, False)
             
-            # Mettre à jour le bouton pour qu'il fonctionne maintenant comme Play/Pause
-            self.btnPlayPause.disconnect()
-            self.btnPlayPause.clicked.connect(self.toggle_play_pause)
-            self.toggle_play_pause()
-        # if not pygame.mixer.get_init():
-        #     pygame.mixer.init()
-        # pygame.mixer.music.play()
-        # self.btnPlayPause.setText('❚❚')  # Change le texte à "Pause" quand la musique commence
-        # self.is_playing = True
-        # self.start_time = time.time()
             
     def setVolume(self, value):
         if pygame.mixer.get_init() is not None:
             pygame.mixer.music.set_volume(value / 100)
+            if value == 0:
+                self.load_svg_in_label(self.volumeMinusLabel, os.path.join(self.application_path, 'data', 'volume-mute.svg'))
+            else:
+                self.load_svg_in_label(self.volumeMinusLabel, os.path.join(self.application_path, 'data', 'volume-down.svg'))
+            if value == 100:
+                self.load_svg_in_label(self.volumePlusLabel, os.path.join(self.application_path, 'data', 'volume-notice.svg'))
+            else:
+                self.load_svg_in_label(self.volumePlusLabel, os.path.join(self.application_path, 'data', 'volume-up.svg'))
+            
             
     def addWaveformToLayout(self):
         # Ajouter la forme d'onde au layout principal
@@ -414,20 +1018,25 @@ class MusicPlayer(QMainWindow):
         if pygame.mixer.get_init() is not None:  # Vérifiez si le mixer est initialisé
             self.current_position = pygame.mixer.music.get_pos()
 
-            # Mettre à jour la barre de progression
-            self.progressBar.setValue(self.current_position)
+            if self.current_position == -1:  # Si la musique n'est pas en cours de lecture
+                self.current_position = 0
+                self.elapsedTimeLabel.setText('0:00')
+                self.remainingTimeLabel.setText(f'-{self.total_duration // 60000}:{(self.total_duration % 60000) // 1000:02}')
+            else:
+                # Mettre à jour la barre de progression
+                self.progressBar.setValue(self.current_position)
 
-            # Calculer et afficher le temps écoulé
-            elapsed_minutes = self.current_position // 60000
-            elapsed_seconds = (self.current_position % 60000) // 1000
-            self.elapsedTimeLabel.setText(f'{elapsed_minutes}:{elapsed_seconds:02}')
+                # Calculer et afficher le temps écoulé
+                elapsed_minutes = self.current_position // 60000
+                elapsed_seconds = (self.current_position % 60000) // 1000
+                self.elapsedTimeLabel.setText(f'{elapsed_minutes}:{elapsed_seconds:02}')
 
-            # Calculer et afficher le temps restant
-            remaining_time = self.total_duration - self.current_position
-            remaining_minutes = abs(remaining_time) // 60000
-            remaining_seconds = (abs(remaining_time) % 60000) // 1000
-            self.remainingTimeLabel.setText(f'-{remaining_minutes}:{remaining_seconds:02}')
-        
+                # Calculer et afficher le temps restant
+                remaining_time = self.total_duration - self.current_position
+                remaining_minutes = abs(remaining_time) // 60000
+                remaining_seconds = (abs(remaining_time) % 60000) // 1000
+                self.remainingTimeLabel.setText(f'-{remaining_minutes}:{remaining_seconds:02}')
+            
             if self.samples is not None:  # Assurez-vous que samples est défini
                 progress = self.current_position / self.total_duration
                 index = int(len(self.samples) * progress)
