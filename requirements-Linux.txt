@@ -1,0 +1,9 @@
+Pillow
+PyOpenGL
+PyOpenGL-accelerate
+PyGObject
+h5py
+scipy
+numba
+llvmlite
+jupyter_rfb
