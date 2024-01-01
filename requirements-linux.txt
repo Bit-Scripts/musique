@@ -1,0 +1,6 @@
+PyQt5==5.15.9
+pyqtgraph==0.13.3
+pygame==2.5.1
+pydub==0.25.1
+mutagen==1.46.0
+numpy==1.23.5
