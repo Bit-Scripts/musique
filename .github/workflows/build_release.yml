@@ -29,9 +29,9 @@ jobs:
     - name: Additional Setup for Ubuntu
       if: startsWith(matrix.os, 'ubuntu')
       run: |
-        pip install -r requirements-Linux.txt
         sudo apt-get update
-        sudo apt-get install python3-pyqt5.qtsvg python3-opengl # Installer le paquet requis pour Ubuntu
+        sudo apt-get install python3-pyqt5.qtsvg python3-opengl libgirepository1.0-dev # Installer le paquet requis pour Ubuntu
+        pip install -r requirements-Linux.txt
 
     - name: Install PyInstaller
       run: pip install pyinstaller  # Installation de PyInstaller
