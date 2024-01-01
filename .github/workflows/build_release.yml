@@ -21,19 +21,16 @@ jobs:
       with:
         python-version: 3.11  # Utilisation de Python 3.11
 
-    - name: Install Dependencies for Ubuntu
+    - name: Install Dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt  # Utilisez le fichier requirements.txt unifié
+
+    - name: Additional Setup for Ubuntu
       if: startsWith(matrix.os, 'ubuntu')
       run: |
         sudo apt-get update
-        sudo apt-get install python3-pyqt5.qtsvg
-        python -m pip install --upgrade pip
-        pip install -r requirements-linux.txt  # Utilisez votre fichier requirements-linux.txt
-
-    - name: Install Dependencies for Windows
-      if: startsWith(matrix.os, 'windows')
-      run: |
-        python -m pip install --upgrade pip
-        pip install -r requirements-windows.txt  # Utilisez votre fichier requirements-windows.txt
+        sudo apt-get install python3-pyqt5.qtsvg  # Installer le paquet requis pour Ubuntu
 
     - name: Install PyInstaller
       run: pip install pyinstaller  # Installation de PyInstaller
