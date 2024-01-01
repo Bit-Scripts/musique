@@ -21,7 +21,7 @@ a = Analysis(
     ('data/volume-up.svg','data'),
     ('data/edit-add.svg','data'),
     ('data/edit-clear.svg','data'),
-    ('.env','.')
+    ('./.env','.')
     ],
     hiddenimports=[],
     hookspath=[],
