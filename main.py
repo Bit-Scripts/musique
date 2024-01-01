@@ -13,6 +13,23 @@ import pyqtgraph as pg
 from mutagen.mp3 import MP3
 from mutagen.easyid3 import EasyID3
 import glob
+from pypresence import Presence
+from filebrowser_client import FilebrowserClient
+import qasync
+import asyncio
+import pyimgur
+import threading
+from dotenv import load_dotenv
+
+# Charge les variables d'environnement du fichier .env
+load_dotenv()
+
+def update_discord_rpc(title, artist, image, mainwindow):
+    try:
+        mainwindow.RPC.update(details=title, state=artist, large_image=image, large_text="Entrain d'écouter")
+        print("Réussite de la mise à jour du RPC Discord")
+    except Exception as e:
+        print(f"Erreur lors de la mise à jour du RPC Discord: {e}")
 
 class WaveformWorker(QThread):
     waveformReady = pyqtSignal(np.ndarray)
@@ -20,12 +37,21 @@ class WaveformWorker(QThread):
     def __init__(self, audio_file):
         super().__init__()
         self.audio_file = audio_file
+        self.is_running = True
 
     def run(self):
-        audio = AudioSegment.from_file(self.audio_file)
-        # Réduisez la résolution des échantillons ici si nécessaire
-        samples = np.array(audio.get_array_of_samples())[::1000]  # Par exemple, prenez un échantillon toutes les 1000 valeurs
-        self.waveformReady.emit(samples)
+        try:
+            audio = AudioSegment.from_file(self.audio_file)
+            # Réduisez la résolution des échantillons ici si nécessaire
+            samples = np.array(audio.get_array_of_samples())[::1000]  # Par exemple, prenez un échantillon toutes les 1000 valeurs
+            self.waveformReady.emit(samples)
+        finally:
+            # Assurez-vous de libérer les ressources ici
+            audio = None 
+
+    def stop(self):
+        self.is_running = False
+        self.wait()
 
 class movable_label(QLabel):
     def __init__(self, parent):
@@ -42,8 +68,9 @@ class movable_label(QLabel):
                 self.pos = e.pos()
                 self.main_pos = self.parent.pos()
         super().mousePressEvent(e)
+        
     def mouseMoveEvent(self, e):
-        if self.parent.cursor().shape() == Qt.ArrowCursor:
+        if self.parent.cursor().shape() == Qt.ArrowCursor and isinstance(self.pos, QPoint):
             self.last_pos = e.pos() - self.pos
             self.main_pos += self.last_pos
             self.parent.move(self.main_pos)
@@ -63,24 +90,26 @@ class HoverButton(QPushButton):
     def leaveEvent(self, event):
         # Retour à l'icône normale lorsque la souris quitte le bouton
         self.setIcon(QIcon(self.icon_path))
+
 class MusicPlayer(QMainWindow):
     def __init__(self):
         super().__init__()
         self.setWindowFlags(Qt.FramelessWindowHint)
-        self.central = QWidget()
-
-        self.vbox = QVBoxLayout(self.central)
-        self.vbox.addWidget(movable_label(self))
-        self.vbox.addWidget(QPushButton("Click"))
-        self.vbox.setAlignment(Qt.AlignTop)
-        self.vbox.setSpacing(0)
-        self.vbox.setContentsMargins(0,0,0,0)
+        self.setAttribute(Qt.WA_TranslucentBackground)
         
-        self.press_control = 0        
+        client_id = os.getenv('DISCORD_CLIENT_ID')  # Remplacez par votre ID client Discord
+        self.RPC = Presence(client_id)
+        self.RPC.connect()
+        self.uploaded_images_cache = {}
         
-        self.setCentralWidget(self.central)
-        self.resize(800,500)
-        self.show()  
+        self.movableWidget = QWidget() 
+        vbox = QVBoxLayout(self.movableWidget)
+        vbox.addWidget(movable_label(self))
+        vbox.setAlignment(Qt.AlignTop)
+        vbox.setSpacing(0)
+        vbox.setContentsMargins(0, 0, 0, 0)
+        
+        self.waveformWorker = None
         
         if getattr(sys, 'frozen', False):
             # Exécuté en mode binaire
@@ -88,6 +117,8 @@ class MusicPlayer(QMainWindow):
         else:
             # Exécuté en mode script
             self.application_path = os.path.dirname(os.path.abspath(__file__))
+        
+        self.press_control = 0
         
         self.filePath = ''
         
@@ -138,6 +169,39 @@ class MusicPlayer(QMainWindow):
         # Initialisation de l'interface utilisateur après avoir défini total_duration
         self.initUI()
         pygame.mixer.init()
+        
+    async def envoyer_image(self, chemin_fichier, title, artist):
+        try:
+            uploaded_image = None
+            image_path_sans_prefixe = chemin_fichier[7:] if chemin_fichier.startswith("file://") else chemin_fichier
+            if image_path_sans_prefixe in self.uploaded_images_cache:
+                print(f"L'image a déjà été téléchargée. URL: {self.uploaded_images_cache[image_path_sans_prefixe]}")
+                uploaded_image = self.uploaded_images_cache[image_path_sans_prefixe]
+            client_id = os.getenv('IMGUR_CLIENT_ID')
+            if not client_id:
+                raise ValueError("La clé API d'Imgur n'est pas définie dans les variables d'environnement.")
+                
+            try:
+                # Téléchargez l'image et mettez à jour le cache
+                im = pyimgur.Imgur(client_id)
+                if uploaded_image is None:
+                    uploaded_image = im.upload_image(image_path_sans_prefixe, title="Uploaded with PyImgur")
+                    self.uploaded_images_cache[image_path_sans_prefixe] = uploaded_image.link
+                    print(f"Image téléchargée avec succès. URL: {uploaded_image.link}")
+                    uploaded_image = uploaded_image.link
+            except Exception as e:
+                print(f"Une erreur est survenue lors du téléchargement de l'image : {e}")
+                return None
+            if uploaded_image:
+                # Mettez à jour Discord RPC avec l'image Imgur
+                print("Réussite du téléchargement de l'image sur Imgur également")
+            else:
+                print("Échec du téléchargement de l'image sur Imgur également")
+                uploaded_image = "music_bot"
+        except Exception as e:
+            print(f"Échec de la connexion ou du téléchargement de l'image : {e}")
+            uploaded_image = "music_bot"
+        threading.Thread(target=update_discord_rpc, args=(title, artist, uploaded_image, self)).start()
 
     def check_playback_status(self):
         if not pygame.mixer.music.get_busy() and self.is_playing and not self.is_manual_track_change:
@@ -314,10 +378,10 @@ class MusicPlayer(QMainWindow):
             self.oldPos = event.globalPos()
 
     def mouseMoveEvent(self, event):
-        if event.buttons() & Qt.LeftButton:
+        if event.buttons() & Qt.LeftButton and self.oldPos is not None:
             delta = QPoint(event.globalPos() - self.oldPos)
             self.move(self.x() + delta.x(), self.y() + delta.y())
-            self.oldPos = event.globalPos()
+        self.oldPos = event.globalPos()
 
     def mouseReleaseEvent(self, event):
         self.oldPos = None
@@ -376,9 +440,16 @@ class MusicPlayer(QMainWindow):
         self.maximizeButton.clicked.connect(self.toggleMaximizeRestore)
         self.closeButton.clicked.connect(self.close)
 
+        # Créez un nouveau QLabel pour le titre
+        titleLabel = QLabel("BIT SCRIPTS - Musique", self)
+        titleLabel.setAlignment(Qt.AlignCenter)
+        # Configurez le style et la taille de police si nécessaire
+        titleLabel.setStyleSheet("color: white; font-size: 16px; font-weight: bold;")
+
         # Ajouter les boutons au layout
         control_layout = QHBoxLayout()
         control_layout.addStretch()
+        control_layout.addWidget(titleLabel)
         control_layout.addWidget(self.minimizeButton)
         control_layout.addWidget(self.maximizeButton)
         control_layout.addWidget(self.closeButton)
@@ -582,10 +653,10 @@ class MusicPlayer(QMainWindow):
         controlLayout = QHBoxLayout()
         btnPrevious = QPushButton(self)
         self.btnPlayPause = QPushButton('▶', self)  # Ce bouton va devenir Play/Pause
-        self.btnPlayPause.clicked.connect(self.load_music)
+        self.btnPlayPause.clicked.connect(self.load_music_slot_connect)
         btnNext = QPushButton(self)
-        btnPrevious.clicked.connect(self.on_btn_previous_clicked)
-        btnNext.clicked.connect(self.on_btn_next_clicked)
+        btnPrevious.clicked.connect(self.on_btn_previous_clicked_slot_connect)
+        btnNext.clicked.connect(self.on_btn_next_clicked_clicked_slot_connect)
         
         btnPrevious.setFont(QFont("Arial", 14))
         btnNext.setFont(QFont("Arial", 14))
@@ -632,15 +703,16 @@ class MusicPlayer(QMainWindow):
         self.apply_style_to_button(self.clearButton, True)
 
         # Connecter les signaux aux slots correspondants
-        self.addButton.clicked.connect(self.load_music)
+        self.addButton.clicked.connect(self.load_music_slot_connect)
         self.clearButton.clicked.connect(self.on_clear_clicked)
 
         # Ajouter les boutons à un layout
         playlistManagerLayout = QHBoxLayout()
         playlistManagerLayout.addWidget(self.addButton)
         playlistManagerLayout.addWidget(self.clearButton)
-                
+        
         # Ajouter les widgets au layout principal
+        mainLayout.addWidget(self.movableWidget)
         mainLayout.addLayout(self.albumArtLayout)
         mainLayout.addLayout(infoLayout)
         mainLayout.addLayout(progressLayout)
@@ -706,9 +778,11 @@ class MusicPlayer(QMainWindow):
         self.albumArtLabel.setPixmap(pixmap.scaled(200, 200, Qt.KeepAspectRatio))
         self.clearWaveform()
         self.btnPlayPause.disconnect()
-        self.btnPlayPause.clicked.connect(self.load_music)
+        self.btnPlayPause.clicked.connect(self.load_music_slot_connect)
         self.waveformPlot.getAxis('left').setVisible(False)
         self.waveformPlot.getAxis('bottom').setVisible(False)
+        if self.RPC is not None:
+            self.RPC.close()
         
         
     def apply_style_to_button(self, button, activate):
@@ -784,53 +858,58 @@ class MusicPlayer(QMainWindow):
             self.showMaximized()
 
     def load_music(self):
-        # Ouvrir le QFileDialog pour sélectionner la musique
-        default_music_folder = QStandardPaths.writableLocation(QStandardPaths.MusicLocation)
-        if platform.system() == 'Linux':
-            folder_path = QFileDialog.getExistingDirectory(None, "Select Folder", default_music_folder, QFileDialog.DontUseNativeDialog)
-        else:
-            folder_path = QFileDialog.getExistingDirectory(None, "Select Folder", default_music_folder)
-        if not folder_path:
-            return
-        if not self.track_list:
-            first = True
-        else:
-            first = False
-        temp_track_list = []
-        temp_track_paths = []
-        temp_ordered_playlist = {}
-        for file in os.listdir(folder_path):
-            if file.endswith(".mp3"):
-                filepath = os.path.join(folder_path, file)
-                try:
-                    audio = EasyID3(filepath)
-                    track_num = audio.get('tracknumber', ['0'])[0].split('/')[0]
-                    artist = audio.get('artist', ['Unknown Artist'])[0]
-                    title = audio.get('title', [file])[0]
-                    album_name = audio.get('album', ['Unknown Album'])[0]
-                    temp_track_list.append((int(track_num), artist, title, filepath))
-                    temp_track_paths.append(filepath)
-                    if album_name not in temp_ordered_playlist:
-                        temp_ordered_playlist[album_name] = []
-                    temp_ordered_playlist[album_name].append((int(track_num), artist, title, filepath))    
-                except Exception as e:
-                    print(f"Erreur avec le fichier {filepath}: {e}") 
-        self.track_list.extend(temp_track_list)
-        self.track_paths.extend(temp_track_paths)
-        for album in temp_ordered_playlist:
-            if album not in self.orderedPlaylist:
-                self.orderedPlaylist[album] = []
-            self.orderedPlaylist[album].extend(temp_ordered_playlist[album])
-        self.random_order()
-        if not self.is_playing and first:
-            self.play_track(0)
+        try:
+            # Ouvrir le QFileDialog pour sélectionner la musique
+            default_music_folder = QStandardPaths.writableLocation(QStandardPaths.MusicLocation)
+            if platform.system() == 'Linux':
+                folder_path = QFileDialog.getExistingDirectory(None, "Select Folder", default_music_folder, QFileDialog.DontUseNativeDialog)
+            else:
+                folder_path = QFileDialog.getExistingDirectory(None, "Select Folder", default_music_folder)
+            if not folder_path:
+                return
+            if self.RPC is None:
+                self.RPC.connect()
+            if not self.track_list:
+                first = True
+            else:
+                first = False
+            temp_track_list = []
+            temp_track_paths = []
+            temp_ordered_playlist = {}
+            for file in os.listdir(folder_path):
+                if file.endswith(".mp3"):
+                    filepath = os.path.join(folder_path, file)
+                    try:
+                        audio = EasyID3(filepath)
+                        track_num = audio.get('tracknumber', ['0'])[0].split('/')[0]
+                        artist = audio.get('artist', ['Unknown Artist'])[0]
+                        title = audio.get('title', [file])[0]
+                        album_name = audio.get('album', ['Unknown Album'])[0]
+                        temp_track_list.append((int(track_num), artist, title, filepath))
+                        temp_track_paths.append(filepath)
+                        if album_name not in temp_ordered_playlist:
+                            temp_ordered_playlist[album_name] = []
+                        temp_ordered_playlist[album_name].append((int(track_num), artist, title, filepath))    
+                    except Exception as e:
+                        print(f"Erreur avec le fichier {filepath}: {e}") 
+            self.track_list.extend(temp_track_list)
+            self.track_paths.extend(temp_track_paths)
+            for album in temp_ordered_playlist:
+                if album not in self.orderedPlaylist:
+                    self.orderedPlaylist[album] = []
+                self.orderedPlaylist[album].extend(temp_ordered_playlist[album])
+            self.random_order()
+            if not self.is_playing and first:
+                self.play_track(0)
+            
+            # Mettre à jour le bouton pour qu'il fonctionne maintenant comme Play/Pause
+            self.btnPlayPause.disconnect()
+            self.btnPlayPause.clicked.connect(self.toggle_play_pause)
+            if first:
+                self.toggle_play_pause()
+        except Exception as e:
+            print(f"Erreur lors du chargement de la musique : {e}")
         
-        # Mettre à jour le bouton pour qu'il fonctionne maintenant comme Play/Pause
-        self.btnPlayPause.disconnect()
-        self.btnPlayPause.clicked.connect(self.toggle_play_pause)
-        if first:
-            self.toggle_play_pause()
-
     def on_random_clicked(self):
         self.is_random = not self.is_random
 
@@ -903,7 +982,7 @@ class MusicPlayer(QMainWindow):
     def play_previous_track(self):
         if self.current_track_index > 0:
             self.current_track_index -= 1
-            self.play_track(self.current_track_index)
+            self.play_track(0)
 
     def play_next_track(self):
         if self.repeat_state == 0:
@@ -983,9 +1062,10 @@ class MusicPlayer(QMainWindow):
         pygame.mixer.music.play()
         self.is_manual_track_change = False
 
+    async def play_track_async(self, cover_path, title, artist):
+        await self.envoyer_image(cover_path, title, artist)
+
     def play_track(self, index):
-        # print('play_track:',self.track_paths)
-        # print('play_track:',len(self.track_paths))
         if 0 <= index < len(self.track_paths):
             
             if not pygame.mixer.get_init():
@@ -1013,19 +1093,18 @@ class MusicPlayer(QMainWindow):
             image_files = glob.glob(os.path.join(music_dir, '*.jpg')) + \
                         glob.glob(os.path.join(music_dir, '*.jpeg')) + \
                         glob.glob(os.path.join(music_dir, '*.png'))
-
             if image_files:
                 # Prendre la première image trouvée
                 cover_path = image_files[0]
-                pixmap = QPixmap(cover_path)
-                if pixmap.isNull():
-                    print("Échec du chargement de l'image de la pochette.")
-                else:
-                    self.albumArtLabel.setPixmap(pixmap.scaled(200, 200, Qt.KeepAspectRatio))
+            else:
+                cover_path = os.path.join(self.application_path, 'data', 'Music bot.png')
+            pixmap = QPixmap(cover_path)
+            if cover_path:
+                self.albumArtLabel.setPixmap(pixmap.scaled(200, 200, Qt.KeepAspectRatio))
             else:
                 print("Aucune image de pochette trouvée.")
-            
             self.total_duration = int(self.get_audio_length(self.filePath) * 1000)  # Durée totale en millisecondes
+            asyncio.create_task(self.play_track_async(cover_path, title, artist))
         
     def on_repeat_clicked(self):
         if self.repeat_state < 2:
@@ -1113,13 +1192,36 @@ class MusicPlayer(QMainWindow):
 
         self.waveformPlot.getAxis('left').setVisible(False)
         self.waveformPlot.getAxis('bottom').setVisible(False)
-
+        
+    def load_music_slot_connect(self):
+        # QTimer.singleShot(0, lambda: asyncio.ensure_future(self.load_music()))        
+        self.load_music()        
+        
+    def on_btn_previous_clicked_slot_connect(self):
+        # QTimer.singleShot(0, lambda: asyncio.ensure_future(self.on_btn_previous_clicked()))   
+        self.on_btn_previous_clicked()    
+        
+    def on_btn_next_clicked_clicked_slot_connect(self):
+        # QTimer.singleShot(0, lambda: asyncio.ensure_future(self.on_btn_next_clicked()))
+        self.on_btn_next_clicked()        
+        
+    def closeEvent(self, event):
+        if self.waveformWorker and self.waveformWorker.isRunning():
+            self.waveformWorker.stop()  # Arrêtez le thread
+            self.waveformWorker.quit() 
+            self.waveformWorker.wait()   # Attendez la fin du thread
+        super().closeEvent(event)
         
 def main():
     app = QApplication(sys.argv)
+    loop = qasync.QEventLoop(app)
+    asyncio.set_event_loop(loop)
+
     player = MusicPlayer()
     player.show()
-    sys.exit(app.exec_())
+
+    with loop:
+        loop.run_forever()
 
 if __name__ == '__main__':
     main()

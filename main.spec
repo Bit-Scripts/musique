@@ -20,7 +20,8 @@ a = Analysis(
     ('data/volume-notice.svg','data'),
     ('data/volume-up.svg','data'),
     ('data/edit-add.svg','data'),
-    ('data/edit-clear.svg','data')
+    ('data/edit-clear.svg','data'),
+    ('.env','.')
     ],
     hiddenimports=[],
     hookspath=[],

@@ -9,3 +9,13 @@ pygame==2.5.1
 pydub==0.25.1
 mutagen==1.46.0
 numpy==1.23.5
+pypresence==4.3.0
+aiodns==3.1.1
+filebrowser-client==0.1.0
+fire==0.4.0
+pycares==4.4.0
+qasync==0.27.1
+asyncio==3.4.3
+pyimgur==0.6.0
+requests==2.31.0
+python-dotenv==1.0.0
