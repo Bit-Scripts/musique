@@ -1,7 +1,11 @@
+import platform
+if platform.system() == 'Linux':
+    import subprocess
+elif platform.system() == 'Windows':
+    import psutil
 import sys
 import os
 import random
-import platform
 import numpy as np
 from pydub import AudioSegment
 from PyQt5.QtWidgets import QMainWindow, QApplication, QWidget, QLabel, QPushButton, QVBoxLayout, QSlider, QHBoxLayout, QFileDialog, QListWidget
@@ -13,7 +17,6 @@ import pyqtgraph as pg
 from mutagen.mp3 import MP3
 from mutagen.easyid3 import EasyID3
 import glob
-from pypresence import Presence
 from filebrowser_client import FilebrowserClient
 import qasync
 import asyncio
@@ -24,12 +27,34 @@ from dotenv import load_dotenv
 # Charge les variables d'environnement du fichier .env
 load_dotenv()
 
+def is_discord_running():
+    # Cette fonction vérifie si Discord est en cours d'exécution sur l'ordinateur
+    if platform.system() == 'Linux':
+        try:
+            # Remplacer par la méthode appropriée pour votre système d'exploitation
+            process = subprocess.check_output(["pgrep", "Discord"])
+            return process is not None
+        except subprocess.CalledProcessError:
+            return False
+    elif platform.system() == 'Windows':
+        for process in psutil.process_iter(['name']):
+            try:
+                if process.info['name'] == 'Discord.exe':
+                    return True
+            except (psutil.NoSuchProcess, psutil.AccessDenied, psutil.ZombieProcess):
+                pass
+        return False
+    
+if is_discord_running():
+    from pypresence import Presence
+    
 def update_discord_rpc(title, artist, image, mainwindow):
-    try:
-        mainwindow.RPC.update(details=title, state=artist, large_image=image, large_text="Entrain d'écouter")
-        print("Réussite de la mise à jour du RPC Discord")
-    except Exception as e:
-        print(f"Erreur lors de la mise à jour du RPC Discord: {e}")
+    if not is_discord_running():
+        try:
+            mainwindow.RPC.update(details=title, state=artist, large_image=image, large_text="Entrain d'écouter")
+            print("Réussite de la mise à jour du RPC Discord")
+        except Exception as e:
+            print(f"Erreur lors de la mise à jour du RPC Discord: {e}")
 
 class WaveformWorker(QThread):
     waveformReady = pyqtSignal(np.ndarray)
@@ -97,10 +122,13 @@ class MusicPlayer(QMainWindow):
         self.setWindowFlags(Qt.FramelessWindowHint)
         self.setAttribute(Qt.WA_TranslucentBackground)
         
-        client_id = os.getenv('DISCORD_CLIENT_ID')  # Remplacez par votre ID client Discord
-        self.RPC = Presence(client_id)
-        self.RPC.connect()
-        self.uploaded_images_cache = {}
+        if is_discord_running():
+            client_id = os.getenv('DISCORD_CLIENT_ID')  # Remplacez par votre ID client Discord
+            self.RPC = Presence(client_id)
+            self.RPC.connect()
+            self.uploaded_images_cache = {}
+        else:
+            print('Discord n\'a pas été détecté sur votre système d\'exploitation, vous ne pouvez donc pas profiter de Discord Rich Presence sur cette ordinateur.')
         
         self.movableWidget = QWidget() 
         vbox = QVBoxLayout(self.movableWidget)
@@ -171,37 +199,38 @@ class MusicPlayer(QMainWindow):
         pygame.mixer.init()
         
     async def envoyer_image(self, chemin_fichier, title, artist):
-        try:
-            uploaded_image = None
-            image_path_sans_prefixe = chemin_fichier[7:] if chemin_fichier.startswith("file://") else chemin_fichier
-            if image_path_sans_prefixe in self.uploaded_images_cache:
-                print(f"L'image a déjà été téléchargée. URL: {self.uploaded_images_cache[image_path_sans_prefixe]}")
-                uploaded_image = self.uploaded_images_cache[image_path_sans_prefixe]
-            client_id = os.getenv('IMGUR_CLIENT_ID')
-            if not client_id:
-                raise ValueError("La clé API d'Imgur n'est pas définie dans les variables d'environnement.")
-                
+        if is_discord_running():
             try:
-                # Téléchargez l'image et mettez à jour le cache
-                im = pyimgur.Imgur(client_id)
-                if uploaded_image is None:
-                    uploaded_image = im.upload_image(image_path_sans_prefixe, title="Uploaded with PyImgur")
-                    self.uploaded_images_cache[image_path_sans_prefixe] = uploaded_image.link
-                    print(f"Image téléchargée avec succès. URL: {uploaded_image.link}")
-                    uploaded_image = uploaded_image.link
+                uploaded_image = None
+                image_path_sans_prefixe = chemin_fichier[7:] if chemin_fichier.startswith("file://") else chemin_fichier
+                if image_path_sans_prefixe in self.uploaded_images_cache:
+                    print(f"L'image a déjà été téléchargée. URL: {self.uploaded_images_cache[image_path_sans_prefixe]}")
+                    uploaded_image = self.uploaded_images_cache[image_path_sans_prefixe]
+                client_id = os.getenv('IMGUR_CLIENT_ID')
+                if not client_id:
+                    raise ValueError("La clé API d'Imgur n'est pas définie dans les variables d'environnement.")
+                    
+                try:
+                    # Téléchargez l'image et mettez à jour le cache
+                    im = pyimgur.Imgur(client_id)
+                    if uploaded_image is None:
+                        uploaded_image = im.upload_image(image_path_sans_prefixe, title="Uploaded with PyImgur")
+                        self.uploaded_images_cache[image_path_sans_prefixe] = uploaded_image.link
+                        print(f"Image téléchargée avec succès. URL: {uploaded_image.link}")
+                        uploaded_image = uploaded_image.link
+                except Exception as e:
+                    print(f"Une erreur est survenue lors du téléchargement de l'image : {e}")
+                    return None
+                if uploaded_image:
+                    # Mettez à jour Discord RPC avec l'image Imgur
+                    print("Réussite du téléchargement de l'image sur Imgur également")
+                else:
+                    print("Échec du téléchargement de l'image sur Imgur également")
+                    uploaded_image = "music_bot"
             except Exception as e:
-                print(f"Une erreur est survenue lors du téléchargement de l'image : {e}")
-                return None
-            if uploaded_image:
-                # Mettez à jour Discord RPC avec l'image Imgur
-                print("Réussite du téléchargement de l'image sur Imgur également")
-            else:
-                print("Échec du téléchargement de l'image sur Imgur également")
+                print(f"Échec de la connexion ou du téléchargement de l'image : {e}")
                 uploaded_image = "music_bot"
-        except Exception as e:
-            print(f"Échec de la connexion ou du téléchargement de l'image : {e}")
-            uploaded_image = "music_bot"
-        threading.Thread(target=update_discord_rpc, args=(title, artist, uploaded_image, self)).start()
+            threading.Thread(target=update_discord_rpc, args=(title, artist, uploaded_image, self)).start()
 
     def check_playback_status(self):
         if not pygame.mixer.music.get_busy() and self.is_playing and not self.is_manual_track_change:
@@ -781,8 +810,9 @@ class MusicPlayer(QMainWindow):
         self.btnPlayPause.clicked.connect(self.load_music_slot_connect)
         self.waveformPlot.getAxis('left').setVisible(False)
         self.waveformPlot.getAxis('bottom').setVisible(False)
-        if self.RPC is not None:
-            self.RPC.close()
+        if is_discord_running():
+            if self.RPC is not None:
+                self.RPC.close()
         
         
     def apply_style_to_button(self, button, activate):
@@ -867,8 +897,9 @@ class MusicPlayer(QMainWindow):
                 folder_path = QFileDialog.getExistingDirectory(None, "Select Folder", default_music_folder)
             if not folder_path:
                 return
-            if self.RPC is None:
-                self.RPC.connect()
+            if is_discord_running():
+                if self.RPC is None:
+                    self.RPC.connect()
             if not self.track_list:
                 first = True
             else:
@@ -1104,7 +1135,8 @@ class MusicPlayer(QMainWindow):
             else:
                 print("Aucune image de pochette trouvée.")
             self.total_duration = int(self.get_audio_length(self.filePath) * 1000)  # Durée totale en millisecondes
-            asyncio.create_task(self.play_track_async(cover_path, title, artist))
+            if is_discord_running():
+                asyncio.create_task(self.play_track_async(cover_path, title, artist))
         
     def on_repeat_clicked(self):
         if self.repeat_state < 2:
