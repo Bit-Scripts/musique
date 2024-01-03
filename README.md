@@ -68,7 +68,7 @@ Pour exécuter ce lecteur de musique, assurez-vous d'avoir installé les éléme
 1. Clonez ce dépôt ou téléchargez-le en tant qu'archive ZIP.
 2. Installez les dépendances nécessaires en exécutant `pip install -r requirements.txt`.
 3. Lancez le lecteur en exécutant `python main.py` depuis le répertoire du projet.
-4. Eventuellement sous Arch Linux utilisez `QT_QPA_PLATFORM=wayland python main.py` ou 
+4. Eventuellement sous Arch Linux utilisez `QT_QPA_PLATFORM=wayland python main.py` ou `QT_QPA_PLATFORM=xcb python main.py`
 ## Utilisation
 Lancez l'application. Vous pourrez charger des fichiers MP3 depuis un dossier de votre choix et contrôler la lecture avec les boutons de l'interface utilisateur.
 
