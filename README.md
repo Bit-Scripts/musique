@@ -53,11 +53,11 @@ Pour exécuter ce lecteur de musique, assurez-vous d'avoir installé les éléme
   - Vérifiez l'installation avec `ffmpeg -version`.
 
 ### Pour Linux :
-- FFmpeg :
+- FFmpeg et autre dépendances :
   - Installez FFmpeg en utilisant le gestionnaire de paquets de votre distribution.
     Par exemple, sur Ubuntu/Debian, utilisez :
     ```bash
-    sudo apt-get install ffmpeg
+    sudo apt-get install ffmpeg python3-pyqt5.qtsvg python3-opengl libgirepository1.0-dev
     ```
   - Vérifiez l'installation avec `ffmpeg -version`.
 ## Installation
