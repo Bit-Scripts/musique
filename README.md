@@ -59,11 +59,16 @@ Pour exécuter ce lecteur de musique, assurez-vous d'avoir installé les éléme
     ```bash
     sudo apt-get install ffmpeg python3-pyqt5.qtsvg python3-opengl libgirepository1.0-dev
     ```
+    Ou sur Arch Linux/Manjaro, utilisez :
+    ```bash
+    sudo pacman -S ffmpeg python-pyqt5 python-opengl gobject-introspection qt5-wayland qt5-x11extras sdl2 sdl2_image sdl2_mixer sdl2_ttf
+    ```
   - Vérifiez l'installation avec `ffmpeg -version`.
 ## Installation
 1. Clonez ce dépôt ou téléchargez-le en tant qu'archive ZIP.
 2. Installez les dépendances nécessaires en exécutant `pip install -r requirements.txt`.
 3. Lancez le lecteur en exécutant `python main.py` depuis le répertoire du projet.
+4. Eventuellement sous Arch Linux utilisez `QT_QPA_PLATFORM=wayland python main.py` ou 
 ## Utilisation
 Lancez l'application. Vous pourrez charger des fichiers MP3 depuis un dossier de votre choix et contrôler la lecture avec les boutons de l'interface utilisateur.
 
