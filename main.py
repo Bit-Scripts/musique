@@ -49,7 +49,7 @@ if is_discord_running():
     from pypresence import Presence
     
 def update_discord_rpc(title, artist, image, mainwindow):
-    if not is_discord_running():
+    if is_discord_running():
         try:
             mainwindow.RPC.update(details=title, state=artist, large_image=image, large_text="Entrain d'écouter")
             print("Réussite de la mise à jour du RPC Discord")
