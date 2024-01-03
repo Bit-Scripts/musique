@@ -11,7 +11,6 @@ mutagen
 numpy
 pypresence
 aiodns
-filebrowser-client
 fire
 pycares
 qasync

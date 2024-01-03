@@ -17,7 +17,6 @@ import pyqtgraph as pg
 from mutagen.mp3 import MP3
 from mutagen.easyid3 import EasyID3
 import glob
-from filebrowser_client import FilebrowserClient
 import qasync
 import asyncio
 import pyimgur
