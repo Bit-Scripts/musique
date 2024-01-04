@@ -24,7 +24,10 @@ import threading
 from dotenv import load_dotenv
 
 # Charge les variables d'environnement du fichier .env
-load_dotenv()
+extDataDir = os.getcwd()
+if getattr(sys, 'frozen', False):
+    extDataDir = sys._MEIPASS
+load_dotenv(dotenv_path=os.path.join(extDataDir, '.env'))
 
 def is_discord_running():
     # Cette fonction vérifie si Discord est en cours d'exécution sur l'ordinateur
