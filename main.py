@@ -3,6 +3,7 @@ if platform.system() == 'Linux':
     import subprocess
 elif platform.system() == 'Windows':
     import psutil
+import tempfile
 import sys
 import os
 import random
@@ -18,6 +19,7 @@ from mutagen.mp3 import MP3
 from mutagen.flac import FLAC
 from mutagen.oggvorbis import OggVorbis
 from mutagen.wavpack import WavPack
+from mutagen.wave import WAVE
 import wave
 from mutagen.easyid3 import EasyID3
 import glob
@@ -937,7 +939,7 @@ class MusicPlayer(QMainWindow):
         elif ext == '.ogg':
             audio = OggVorbis(file_path)
         elif ext == '.wav':
-            audio = WavPack(file_path)  # ou utiliser une autre bibliothèque appropriée pour les fichiers WAV
+            audio = WAVE(file_path)
         else:
             return None  # Format non supporté ou inconnu
 
@@ -1169,7 +1171,7 @@ class MusicPlayer(QMainWindow):
                 format_map = {'.flac': 'flac', '.mp3': 'mp3', '.ogg': 'ogg'}
                 audio_format = format_map.get(ext, 'mp3')  # Par défaut à 'mp3' si le format n'est pas trouvé
                 audio = AudioSegment.from_file(self.filePath, format=audio_format)
-                temp_file = 'temp.wav'  # Nom de fichier temporaire
+                temp_file = tempfile.NamedTemporaryFile(delete=True, suffix='.wav')  # Nom de fichier temporaire
                 audio.export(temp_file, format='wav')
                 self.filePath = temp_file
             
