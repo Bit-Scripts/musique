@@ -4,6 +4,7 @@ if platform.system() == 'Linux':
 elif platform.system() == 'Windows':
     import psutil
 import tempfile
+from PIL import Image
 import sys
 import os
 import random
@@ -221,6 +222,17 @@ class MusicPlayer(QMainWindow):
         # Initialisation de l'interface utilisateur après avoir défini total_duration
         self.initUI()
         pygame.mixer.init()
+        
+    def resize_cover(self, cover_path, size=(252, 252)):
+        with Image.open(cover_path) as img:
+            # Redimensionner l'image
+            img.thumbnail(size, Image.LANCZOS)
+
+            # Créer un fichier temporaire
+            temp_file = tempfile.NamedTemporaryFile(delete=False, suffix='.jpg')
+            img.save(temp_file.name, 'JPEG')
+
+        return temp_file.name
         
     async def envoyer_image(self, chemin_fichier, title, artist):
         if is_discord_running():
@@ -942,10 +954,14 @@ class MusicPlayer(QMainWindow):
             audio = WAVE(file_path)
         else:
             return None  # Format non supporté ou inconnu
+        
+        # Obtenez le nom de base du fichier sans l'extension
+        base_name = os.path.basename(file_path)
+        file_title = os.path.splitext(base_name)[0]
 
         # Assurez-vous de récupérer la chaîne complète si la valeur est une liste
         metadata['artist'] = ' '.join(audio.get('artist', ['Unknown Artist']))
-        metadata['title'] = ' '.join(audio.get('title', ['Unknown Title']))
+        metadata['title'] = ' '.join(audio.get('title', [file_title]))
         metadata['album'] = ' '.join(audio.get('album', ['Unknown Album']))
         metadata['tracknumber'] = ' '.join(audio.get('tracknumber', ['0'])).split('/')[0]
 
@@ -1205,6 +1221,7 @@ class MusicPlayer(QMainWindow):
                 cover_path = image_files[0]
             else:
                 cover_path = os.path.join(self.application_path, 'data', 'Music bot.png')
+            cover_path = self.resize_cover(cover_path)
             pixmap = QPixmap(cover_path)
             if cover_path:
                 self.albumArtLabel.setPixmap(pixmap.scaled(200, 200, Qt.KeepAspectRatio))

@@ -19,3 +19,4 @@ pyimgur
 requests
 python-dotenv
 psutil
+Pillow
