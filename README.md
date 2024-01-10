@@ -5,7 +5,7 @@ Petit lecteur de musique écrit en Python et sans prétention.
 ![Design du lecteur](Apercu.png)
 
 ## Fonctionnalités
-- Lecture de fichiers audio au format MP3.
+- Lecture de fichiers audio au format MP3, WAVE, OGG ou encore FLAC.
 - Contrôle simple avec des boutons pour jouer/pauser, passer à la chanson suivante ou revenir à la précédente.
 - Affichage de la forme d'onde de la chanson en cours.
 - Barre de progression indiquant le temps écoulé de la chanson.
