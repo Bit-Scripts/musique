@@ -15,6 +15,10 @@ from PyQt5.QtSvg import QSvgWidget
 import pygame.mixer
 import pyqtgraph as pg
 from mutagen.mp3 import MP3
+from mutagen.flac import FLAC
+from mutagen.oggvorbis import OggVorbis
+from mutagen.wavpack import WavPack
+import wave
 from mutagen.easyid3 import EasyID3
 import glob
 import qasync
@@ -139,6 +143,15 @@ class MusicPlayer(QMainWindow):
         vbox.setSpacing(0)
         vbox.setContentsMargins(0, 0, 0, 0)
         
+        # Initialisation des attributs de layout
+        self.control_layout = QHBoxLayout()
+        self.albumArtLayout = QHBoxLayout()
+        self.infoLayout = QVBoxLayout()
+        self.progressLayout = QHBoxLayout()
+        self.volumeLayout = QHBoxLayout()
+        self.controlAllLayout = QVBoxLayout()
+        self.playlistManagerLayout = QHBoxLayout()
+        
         self.waveformWorker = None
         
         if getattr(sys, 'frozen', False):
@@ -168,6 +181,9 @@ class MusicPlayer(QMainWindow):
         
         self.newPos = 0.0
         
+        self.volumeMinusLabel = None
+        self.volumePlusLabel = None
+        
         # Initialiser le QTimer pour vérifier l'état de la lecture
         self.playback_checker = QTimer(self)
         self.playback_checker.timeout.connect(self.check_playback_status)
@@ -190,11 +206,15 @@ class MusicPlayer(QMainWindow):
         
         self.is_playing = False
         
+        self.volume = 80
+        
         self.track_paths = list()  # Liste pour stocker les chemins des fichiers
         self.current_track_index = 0 
         
         icon_path = os.path.join(self.application_path, 'data', 'Music bot.png')  # Chemin vers votre icône
         self.setWindowIcon(QIcon(icon_path))
+        
+        self.audio_file = None
 
         # Initialisation de l'interface utilisateur après avoir défini total_duration
         self.initUI()
@@ -418,9 +438,26 @@ class MusicPlayer(QMainWindow):
         self.oldPos = None
         
     def get_audio_length(self, file_path):
-        audio = MP3(file_path)
-        audio_length = audio.info.length  # durée en secondes
-        return audio_length
+        ext = os.path.splitext(file_path)[-1].lower()
+
+        if ext == '.mp3':
+            audio = MP3(file_path)
+            audio_length = audio.info.length
+        elif ext == '.flac':
+            audio = FLAC(file_path)
+            audio_length = audio.info.length
+        elif ext == '.ogg':
+            audio = OggVorbis(file_path)
+            audio_length = audio.info.length
+        elif ext == '.wav':
+            with wave.open(file_path, 'r') as audio:
+                frames = audio.getnframes()
+                rate = audio.getframerate()
+                audio_length = frames / float(rate)
+        else:
+            audio_length = 0  # ou gérer l'erreur
+
+        return audio_length  # durée en secondes
 
     def load_svg_in_label(self, label, svg_path, size=QSize(30, 30)):
         svg_widget = QSvgWidget(svg_path)
@@ -889,6 +926,29 @@ class MusicPlayer(QMainWindow):
         else:
             self.showMaximized()
 
+    def get_metadata(self, file_path):
+        ext = os.path.splitext(file_path)[-1].lower()
+        metadata = {}
+
+        if ext == '.mp3':
+            audio = EasyID3(file_path)
+        elif ext == '.flac':
+            audio = FLAC(file_path)
+        elif ext == '.ogg':
+            audio = OggVorbis(file_path)
+        elif ext == '.wav':
+            audio = WavPack(file_path)  # ou utiliser une autre bibliothèque appropriée pour les fichiers WAV
+        else:
+            return None  # Format non supporté ou inconnu
+
+        # Assurez-vous de récupérer la chaîne complète si la valeur est une liste
+        metadata['artist'] = ' '.join(audio.get('artist', ['Unknown Artist']))
+        metadata['title'] = ' '.join(audio.get('title', ['Unknown Title']))
+        metadata['album'] = ' '.join(audio.get('album', ['Unknown Album']))
+        metadata['tracknumber'] = ' '.join(audio.get('tracknumber', ['0'])).split('/')[0]
+
+        return metadata
+
     def load_music(self):
         try:
             # Ouvrir le QFileDialog pour sélectionner la musique
@@ -899,6 +959,7 @@ class MusicPlayer(QMainWindow):
                 folder_path = QFileDialog.getExistingDirectory(None, "Select Folder", default_music_folder)
             if not folder_path:
                 return
+            print("Chemins des pistes chargées :", folder_path)
             if is_discord_running():
                 if self.RPC is None:
                     self.RPC.connect()
@@ -910,21 +971,19 @@ class MusicPlayer(QMainWindow):
             temp_track_paths = []
             temp_ordered_playlist = {}
             for file in os.listdir(folder_path):
-                if file.endswith(".mp3"):
-                    filepath = os.path.join(folder_path, file)
+                if file.endswith((".mp3", ".wav", ".flac", ".ogg")):
+                    self.filePath = os.path.join(folder_path, file)
                     try:
-                        audio = EasyID3(filepath)
-                        track_num = audio.get('tracknumber', ['0'])[0].split('/')[0]
-                        artist = audio.get('artist', ['Unknown Artist'])[0]
-                        title = audio.get('title', [file])[0]
-                        album_name = audio.get('album', ['Unknown Album'])[0]
-                        temp_track_list.append((int(track_num), artist, title, filepath))
-                        temp_track_paths.append(filepath)
-                        if album_name not in temp_ordered_playlist:
-                            temp_ordered_playlist[album_name] = []
-                        temp_ordered_playlist[album_name].append((int(track_num), artist, title, filepath))    
+                        metadata = self.get_metadata(self.filePath)
+                        if metadata:
+                            temp_track_list.append((int(metadata['tracknumber']), metadata['artist'], metadata['title'], self.filePath))
+                            temp_track_paths.append(self.filePath)
+                            album_name = metadata['album']
+                            if album_name not in temp_ordered_playlist:
+                                temp_ordered_playlist[album_name] = []
+                            temp_ordered_playlist[album_name].append((int(metadata['tracknumber']), metadata['artist'], metadata['title'], self.filePath)) 
                     except Exception as e:
-                        print(f"Erreur avec le fichier {filepath}: {e}") 
+                        print(f"Erreur avec le fichier {self.filePath}: {e}") 
             self.track_list.extend(temp_track_list)
             self.track_paths.extend(temp_track_paths)
             for album in temp_ordered_playlist:
@@ -932,7 +991,9 @@ class MusicPlayer(QMainWindow):
                     self.orderedPlaylist[album] = []
                 self.orderedPlaylist[album].extend(temp_ordered_playlist[album])
             self.random_order()
-            if not self.is_playing and first:
+            # Jouer la première piste si nécessaire
+            if self.track_paths and not self.is_playing:
+                print("Tentative de jouer : ", self.track_paths[0])
                 self.play_track(0)
             
             # Mettre à jour le bouton pour qu'il fonctionne maintenant comme Play/Pause
@@ -1100,6 +1161,17 @@ class MusicPlayer(QMainWindow):
 
     def play_track(self, index):
         if 0 <= index < len(self.track_paths):
+            self.filePath = self.track_paths[index]
+            ext = os.path.splitext(self.filePath)[-1].lower()
+            
+            if ext in ['.flac', '.mp3', '.ogg']:
+                # Convertir le fichier en WAV pour la lecture
+                format_map = {'.flac': 'flac', '.mp3': 'mp3', '.ogg': 'ogg'}
+                audio_format = format_map.get(ext, 'mp3')  # Par défaut à 'mp3' si le format n'est pas trouvé
+                audio = AudioSegment.from_file(self.filePath, format=audio_format)
+                temp_file = 'temp.wav'  # Nom de fichier temporaire
+                audio.export(temp_file, format='wav')
+                self.filePath = temp_file
             
             if not pygame.mixer.get_init():
                 pygame.mixer.init()
@@ -1112,10 +1184,10 @@ class MusicPlayer(QMainWindow):
             
             self.current_track_index = index
                     
-            # Lire les métadonnées du fichier MP3
-            audio = EasyID3(self.filePath)
-            artist = audio.get('artist', ['Unknown Artist'])[0]  # Remplacer par 'Unknown Artist' si non disponible
-            title = audio.get('title', ['Unknown Title'])[0]  # Remplacer par 'Unknown Title' si non disponible
+            # Lire les métadonnées du fichier Audio
+            audio = self.get_metadata(self.filePath)
+            artist = audio.get('artist', ['Unknown Artist'])  # Remplacer par 'Unknown Artist' si non disponible
+            title = audio.get('title', ['Unknown Title']) # Remplacer par 'Unknown Title' si non disponible
 
             # Mettre à jour l'interface graphique avec les métadonnées
             self.artistLabel.setText(f'Artiste : {artist}')
