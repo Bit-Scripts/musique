@@ -228,6 +228,10 @@ class MusicPlayer(QMainWindow):
             # Redimensionner l'image
             img.thumbnail(size, Image.LANCZOS)
 
+            # Convertir en RGB si l'image est en mode RGBA
+            if img.mode == 'RGBA':
+                img = img.convert('RGB')
+
             # Créer un fichier temporaire
             temp_file = tempfile.NamedTemporaryFile(delete=False, suffix='.jpg')
             img.save(temp_file.name, 'JPEG')
@@ -1177,6 +1181,22 @@ class MusicPlayer(QMainWindow):
     async def play_track_async(self, cover_path, title, artist):
         await self.envoyer_image(cover_path, title, artist)
 
+    def find_images(self, directory):
+        image_extensions = ['.jpg', '.jpeg', '.png']
+        image_files = []
+
+        # Parcourir les fichiers dans le répertoire
+        for file in os.listdir(directory):
+            # Obtenez le nom du fichier et son extension
+            _, extension = os.path.splitext(file)
+
+            # Vérifiez si l'extension du fichier est parmi celles recherchées
+            if extension.lower() in image_extensions:
+                # Ajoutez le chemin complet du fichier à la liste
+                image_files.append(os.path.join(directory, file))
+
+        return image_files
+
     def play_track(self, index):
         if 0 <= index < len(self.track_paths):
             self.filePath = self.track_paths[index]
@@ -1213,9 +1233,9 @@ class MusicPlayer(QMainWindow):
             
             # Charger la pochette s'il y en a une dans le même dossier
             music_dir = os.path.dirname(self.filePath)
-            image_files = glob.glob(os.path.join(music_dir, '*.jpg')) + \
-                        glob.glob(os.path.join(music_dir, '*.jpeg')) + \
-                        glob.glob(os.path.join(music_dir, '*.png'))
+            
+            image_files = self.find_images(music_dir)
+                        
             if image_files:
                 # Prendre la première image trouvée
                 cover_path = image_files[0]
