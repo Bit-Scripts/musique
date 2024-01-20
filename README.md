@@ -23,10 +23,8 @@ For the English version of this documentation page, click [here](./README-en.md)
 ### Ajout de musique :  
 ![Ajout de Musique](Ajout-Musiques.png)  
 ### En action :   
-  
-<video width="640" height="360" poster="BSMusic.png" controls>
-  <source src="BSMusic.mp4" type="video/mp4">
-</video>
+
+[![Watch the video](./BSMusic.png)](./BSMusic.mp4)
   
 ### Discord RPC :  
 ![Intégration de Discord RPC](./Intégration-de-Discord-RPC.png)  
