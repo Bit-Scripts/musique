@@ -1,13 +1,9 @@
 # BIT-SCRIPTS<br/>Musique
 
 Petit lecteur de musique écrit en Python et sans prétention.
-
-## Design du lecteur :
-![Design du lecteur](Apercu.png)  
-## Ajout de musique :
-![Ajout de Musique](Ajout-Musiques.png)
-
+  
 ## Table des Matières
+- [Capture d'écran de l'application](#capture-décran-de-lapplication)
 - [Fonctionnalités](#fonctionnalités)
 - [Prérequis](#prérequis)
 - [Installation](#installation)
@@ -18,6 +14,14 @@ Petit lecteur de musique écrit en Python et sans prétention.
 - [FAQ ou Dépannage](#faq-ou-dépannage)
 - [Licence](#licence)
 - [Contacts](#contacts)
+
+## Capture d'écran de l'application
+### Design du lecteur :
+![Design du lecteur](Apercu.png)  
+### Ajout de musique :
+![Ajout de Musique](Ajout-Musiques.png)
+### Discord RPC :
+![Intégration de Discord RPC](./Intégration-de-Discord-RPC.png)
 
 ## Fonctionnalités
 - Lecture de fichiers audio au format MP3, WAVE, OGG ou encore FLAC.
@@ -69,6 +73,7 @@ Pour exécuter ce lecteur de musique, assurez-vous d'avoir installé les éléme
   - Vérifiez l'installation avec `ffmpeg -version`.
 
 ### Pour Linux :
+Les instructions d'installation des dépendances sont fournies pour Ubuntu/Debian et Arch Linux/Manjaro. Si vous utilisez une distribution différente comme par exemple, Fedora ou RHEL, veuillez consulter la documentation de votre distribution pour les instructions spécifiques d'installation de FFmpeg et des autres dépendances requises.
 - FFmpeg :
   - Installez FFmpeg en utilisant le gestionnaire de paquets de votre distribution.
     Par exemple, sur Ubuntu/Debian, utilisez :
@@ -94,41 +99,82 @@ Pour exécuter ce lecteur de musique, assurez-vous d'avoir installé les éléme
 ## Installation
 1. Pour une installation rapide, téléchargez les dernières versions binaires de l'application [ici](https://github.com/Bit-Scripts/musique/releases/latest). Si vous utilisez le binaire, vous n'avez pas besoin d'installer Python ou les autres dépendances, à l'exception de FFmpeg.
 2. Pour une installation manuelle, clonez ce dépôt ou téléchargez-le en tant qu'archive ZIP, puis installez les dépendances nécessaires en exécutant pip install -r requirements.txt.
-3. Lancez le lecteur en exécutant python main.py depuis le répertoire du projet.
+3. Lancez le lecteur en exécutant `python main.py` depuis le répertoire du projet.
   
 ## Utilisation
 Lancez l'application. Vous pourrez charger des fichiers MP3 depuis un dossier de votre choix et contrôler la lecture avec les boutons de l'interface utilisateur.
   
 ## Intégration de Discord RPC
 Pour enrichir l'expérience utilisateur, j'ai implémenté l'affichage de la musique en cours de lecture dans Discord grâce à la fonctionnalité Discord RPC.
-Voici un aperçu de l'intégration de Discord RPC en action :
-
-![Intégration de Discord RPC](./Intégration-de-Discord-RPC.png)
-
-
+Voici un aperçu de l'[intégration de Discord RPC](#discord-rpc-).
+  
 ## Personnalisation
 Vous pouvez personnaliser l'apparence de l'application en modifiant les fichiers de style CSS intégrés.
 
 ## Contribution
-Les contributions sont les bienvenues. Pour toute demande ou suggestion, n'hésitez pas à créer une [issue](https://github.com/Bit-Scripts/musique/issues) ou un pull request. Nous nous engageons à lire et répondre à vos demandes.
+Nous accueillons chaleureusement les contributions à ce projet !  
+  
+Si vous avez des idées d'amélioration, des corrections de bugs ou souhaitez ajouter de nouvelles fonctionnalités, n'hésitez pas à créer un pull request ou une [issue](https://github.com/Bit-Scripts/musique/issues). 
+  
+Même si vous êtes nouveau dans le domaine de l'open source, nous serons ravis de vous guider à travers le processus. 
+  
+Pour commencer, vous pouvez :  
+- Forker le projet et tester le code sur votre machine.
+- Soumettre des pull requests avec vos modifications ou ajouts.
+- Créer des [issue](https://github.com/Bit-Scripts/musique/issues) pour discuter de bugs, de suggestions d'améliorations ou de nouvelles fonctionnalités.
+  
+Nous nous engageons à lire et répondre à vos demandes.
+  
+## Questions Fréquentes et Dépannage
 
-## FAQ ou Dépannage
-Q: Comment résoudre l'erreur "X" lors de l'installation ?
-R: Assurez-vous que vous avez bien installé toutes les dépendances. Si le problème persiste, n'hésitez pas à créer une [issue sur notre page GitHub](https://github.com/Bit-Scripts/musique/issues).
-
-Q: L'application ne trouve pas mes fichiers musicaux.
+### Dans tout les cas
+- **Format de musique**
+Q: Quels formats audio mon lecteur de musique peut-il lire ?   
+R: Le lecteur supporte les formats MP3, WAVE, OGG et FLAC. Si vous rencontrez des problèmes avec ces formats, assurez-vous d'avoir la dernière version complète de FFmpeg installée.   
+  
+- **Où sont mes musiques**
+Q: L'application ne trouve pas mes fichiers musicaux.  
 R: Vérifiez que les fichiers sont dans un format pris en charge (flac, mp3, ogg ou wav) et que le chemin d'accès est correct. 
-
+  
+- **Pochette d'album**
 Q: L'intégration des pochettes d'album semble ne pas fonctionner.  
-R: Les pochettes d'album doivent être au format jpg, jpeg ou png et situées dans le même dossier que les fichiers musicaux.
-
+R: Les pochettes d'album doivent être au format jpg, jpeg ou png et situées dans le même dossier que les fichiers musicaux.  
+  
+- **Problème de ressources**
+Q: Pourquoi le lecteur de musique ralentit ou gèle parfois ?  
+R: Cela peut être dû à des ressources système insuffisantes, à des fichiers audio de grande taille ou à des problèmes de compatibilité. Essayez de fermer d'autres applications en cours d'exécution et de réduire la taille de votre bibliothèque musicale. Si le problème persiste, veuillez nous contacter via une isseu, [ici](https://github.com/Bit-Scripts/musique/issues).  
+  
+- **Problème avec FFmpeg**
+Q: Comment configurer FFmpeg pour qu'il fonctionne avec le lecteur de musique ?  
+R: Après avoir installé la version complète de FFmpeg, ajoutez son chemin d'accès à la variable d'environnement Path de votre système. Consultez la documentation de FFmpeg pour plus de détails ou créez une issue [ici](https://github.com/Bit-Scripts/musique/issues) pour obtenir de l'aide.  
+  
+### Installation depuis les binaires
+- **Mise à jour**
+Q: Comment puis-je mettre à jour mon lecteur de musique depuis le **binaire** ?  
+R: Visitez la page [releases](https://github.com/Bit-Scripts/musique/releases/latest) pour télécharger la dernière version. Si vous utilisez le binaire, remplacez simplement l'ancien fichier exécutable par le nouveau.
+  
+### Installation via les fichiers Python 
+- **Installation**
+Q: Comment résoudre l'erreur "X" lors de l'installation ?  
+R: Assurez-vous que vous avez bien installé toutes les dépendances. Si le problème persiste, n'hésitez pas à créer une [issue sur notre page GitHub](https://github.com/Bit-Scripts/musique/issues). 
+  
+- **Mise à jour**
+Q: Comment puis-je mettre à jour mon lecteur de musique depuis une copie des **fichiers Python** ?  
+R: Effectuer un `git pull` dans le dossier de l'application.  
+  
+- **Problème lié à l'interface graphique**
+Q: Que faire si l'interface graphique ne s'affiche pas correctement en lançant l'application avec Python ?  
+R: Assurez-vous que toutes les dépendances, en particulier PyQt5 et Pyqtgraph, sont correctement installées. Si le problème persiste, essayez de redémarrer l'application ou votre système.  
+  
 En cas de problème, ouvrez une [issue sur GitHub](https://github.com/Bit-Scripts/musique/issues) et nous nous engageons à résoudre votre problème dans les plus brefs délais (laissez-nous au moins deux semaines, mais le problème sera corrigé).
-
+  
 ## Licence
 Ce projet est sous licence MIT. Voir le fichier [LICENSE](./LICENSE) pour plus de détails.
 
 ## Contacts
-- Pour échanger avec nous n'hésitez pas à vous rendre sur notre [serveur Discord](https://discord.gg/6J5EX5hCeW)
+- Pour échanger avec nous n'hésitez pas à vous rendre sur notre [serveur Discord](https://discord.gg/6J5EX5hCeW) ainsi vous pourriez y poser des questions ou demander de l'aide sur le serveur Discord.  
+
+- Vous pouvez me contacter par Email en cas de besoin, [lien vers mon Email](mailto:paulwoisard@gmail.com)
 
 - Vous aimez ce projet :
 Rendez-vous sur notre site, [bit-scripts.github.io](https://bit-scripts.github.io/index.html), pour y trouver nos autres réalisations.
