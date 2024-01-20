@@ -22,12 +22,8 @@ Pour la version en français de cette page de documentation aller [ici](./README
 ![Player Design](Apercu.png)  
 ### Adding Music:
 ![Adding Music](Ajout-Musiques.png)
-### In Action:
-  
-<video width="640" height="360" poster="BSMusic.png" controls>
-  <source src="BSMusic.mp4" type="video/mp4">
-</video>
-  
+### In Action:  
+https://github.com/Bit-Scripts/musique/assets/22844238/d0c22e06-2d05-4f93-a2ca-5435c50c4171  
 ### Discord RPC:
 ![Discord RPC](./Intégration-de-Discord-RPC.png)
 

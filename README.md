@@ -23,9 +23,7 @@ For the English version of this documentation page, click [here](./README-en.md)
 ### Ajout de musique :  
 ![Ajout de Musique](Ajout-Musiques.png)  
 ### En action :   
-https://youtu.be/vaD79dOtWSY
-[![Watch the video](./BSMusic.png)](./BSMusic.mp4)
-  
+https://github.com/Bit-Scripts/musique/assets/22844238/d0c22e06-2d05-4f93-a2ca-5435c50c4171  
 ### Discord RPC :  
 ![Intégration de Discord RPC](./Intégration-de-Discord-RPC.png)  
 
