@@ -1,6 +1,8 @@
 # BIT-SCRIPTS<br/>Musique
 
-Petit lecteur de musique écrit en Python et sans prétention.
+Petit lecteur de musique écrit en Python et sans prétention.   
+  
+For the English version of this documentation page, click [here](./README-en.md).  
   
 ## Table des Matières
 - [Capture d'écran de l'application](#capture-décran-de-lapplication)
@@ -11,17 +13,23 @@ Petit lecteur de musique écrit en Python et sans prétention.
 - [Intégration de Discord RPC](#intégration-de-discord-rpc)
 - [Personnalisation](#personnalisation)
 - [Contribution](#contribution)
-- [FAQ ou Dépannage](#faq-ou-dépannage)
+- [Questions Fréquentes et Dépannage](#questions-fréquentes-et-dépannage)
 - [Licence](#licence)
 - [Contacts](#contacts)
 
 ## Capture d'écran de l'application
-### Design du lecteur :
-![Design du lecteur](Apercu.png)  
-### Ajout de musique :
-![Ajout de Musique](Ajout-Musiques.png)
-### Discord RPC :
-![Intégration de Discord RPC](./Intégration-de-Discord-RPC.png)
+### Design du lecteur :  
+![Design du lecteur](Apercu.png)    
+### Ajout de musique :  
+![Ajout de Musique](Ajout-Musiques.png)  
+### En action :   
+  
+<video width="640" height="360" poster="BSMusic.png" controls>
+  <source src="BSMusic.mp4" type="video/mp4">
+</video>
+  
+### Discord RPC :  
+![Intégration de Discord RPC](./Intégration-de-Discord-RPC.png)  
 
 ## Fonctionnalités
 - Lecture de fichiers audio au format MP3, WAVE, OGG ou encore FLAC.
@@ -34,40 +42,28 @@ Petit lecteur de musique écrit en Python et sans prétention.
 Pour exécuter ce lecteur de musique, assurez-vous d'avoir installé les éléments suivants :
 
 ### Pour tous les systèmes :
-- Python 3.x (non nécessaire si vous utilisez le binaire)
-- PyQt5
-- Pygame
-- PyDub
-- Mutagen
-- Pyqtgraph
-- FFmpeg (essentiel pour tous les systèmes)
+- [Python 3.x](https://www.python.org/downloads/) (non nécessaire si vous utilisez le binaire)
+- [PyQt5](https://pypi.org/project/PyQt5/) (non nécessaire si vous utilisez le binaire)
+- [Pygame](https://pypi.org/project/pygame/) (non nécessaire si vous utilisez le binaire)
+- [PyDub](https://pypi.org/project/pydub/) (non nécessaire si vous utilisez le binaire)
+- [Mutagen](https://pypi.org/project/mutagen/) (non nécessaire si vous utilisez le binaire)
+- [Pyqtgraph](https://pypi.org/project/pyqtgraph/) (non nécessaire si vous utilisez le binaire)
+- [FFmpeg](https://ffmpeg.org/download.html) **(essentiel pour tous les systèmes)**
 
 ### Pour Windows :
 - FFmpeg :
   - Vous pouvez installer FFmpeg via l'un des gestionnaires de paquets en ligne de commande suivants :
-    - Chocolatey :
+    - Chocolatey ([Comment installer Chocolatey](https://chocolatey.org/install)) :
       ```
       choco install ffmpeg
       ```
-    - Winget (Essentials Build) :
-      ```
-      winget install "FFmpeg (Essentials Build)"
-      ```
-    - Winget (Full Build) :
+    - Winget ([Comment installer Winget](https://aymeric-cucherousset.fr/installer-winget-sur-windows/)) :
       ```
       winget install ffmpeg
       ```
-    - Scoop (Full Build) :
+    - Scoop ([Comment installer Scoop](https://www.useweb.fr/blog/developpement/post/scoop-package-manager/)) :
       ```
       scoop install ffmpeg
-      ```
-    - Scoop (Shared Build) :
-      ```
-      scoop install ffmpeg-shared
-      ```
-    - Pour les builds de développement (Git Master) :
-      ```
-      scoop install ffmpeg-gyan-nightly
       ```
   - Alternativement, vous pouvez télécharger FFmpeg manuellement depuis [le site officiel](https://ffmpeg.org/download.html), l'extraire et ajouter le dossier `bin` à la variable d'environnement `Path`.
   - Vérifiez l'installation avec `ffmpeg -version`.
@@ -102,7 +98,7 @@ Les instructions d'installation des dépendances sont fournies pour Ubuntu/Debia
 3. Lancez le lecteur en exécutant `python main.py` depuis le répertoire du projet.
   
 ## Utilisation
-Lancez l'application. Vous pourrez charger des fichiers MP3 depuis un dossier de votre choix et contrôler la lecture avec les boutons de l'interface utilisateur.
+Lancez l'application. Vous pourrez charger des fichiers musicaux depuis un dossier de votre choix et contrôler la lecture avec les boutons de l'interface utilisateur.
   
 ## Intégration de Discord RPC
 Pour enrichir l'expérience utilisateur, j'ai implémenté l'affichage de la musique en cours de lecture dans Discord grâce à la fonctionnalité Discord RPC.
@@ -121,7 +117,7 @@ Même si vous êtes nouveau dans le domaine de l'open source, nous serons ravis 
 Pour commencer, vous pouvez :  
 - Forker le projet et tester le code sur votre machine.
 - Soumettre des pull requests avec vos modifications ou ajouts.
-- Créer des [issue](https://github.com/Bit-Scripts/musique/issues) pour discuter de bugs, de suggestions d'améliorations ou de nouvelles fonctionnalités.
+- Créer des [issues](https://github.com/Bit-Scripts/musique/issues) pour discuter de bugs, de suggestions d'améliorations ou de nouvelles fonctionnalités.
   
 Nous nous engageons à lire et répondre à vos demandes.
   
@@ -136,9 +132,13 @@ R: Le lecteur supporte les formats MP3, WAVE, OGG et FLAC. Si vous rencontrez de
 Q: L'application ne trouve pas mes fichiers musicaux.  
 R: Vérifiez que les fichiers sont dans un format pris en charge (flac, mp3, ogg ou wav) et que le chemin d'accès est correct. 
   
-- **Pochette d'album**  
+- **Pochettes d'album**  
 Q: L'intégration des pochettes d'album semble ne pas fonctionner.  
 R: Les pochettes d'album doivent être au format jpg, jpeg ou png et situées dans le même dossier que les fichiers musicaux.  
+  
+- **Système d'exploitation supporter par le lecteur audio**  
+Q: Sur quel système d'exploitation, je peux utiliser Bit-Scripts Musique ?  
+R: À l'heure actuelle, *Bit-Scripts Musique* est disponible pour Microsoft Windows et la majorité des distributions Linux.   
   
 - **Problème de ressources**  
 Q: Pourquoi le lecteur de musique ralentit ou gèle parfois ?  
@@ -171,10 +171,20 @@ En cas de problème, ouvrez une [issue sur GitHub](https://github.com/Bit-Script
 ## Licence
 Ce projet est sous licence MIT. Voir le fichier [LICENSE](./LICENSE) pour plus de détails.
 
+## Mentions légales et Remerciements
+### Icônes
+Les icônes utilisées dans cette application proviennent de [Iconduck](https://iconduck.com/sets/iconpark-icon-set/categories/music) et ont été légèrement modifiées pour s'adapter au design de l'application. Nous tenons à remercier Iconduck pour leur travail remarquable et leur contribution à la communauté open-source.
+
+### Contributions
+[Red Moon](https://github.com/Quentin-D31) : Un grand merci à Red Moon pour avoir testé l'application sur Arch Linux et pour ses retours précieux qui ont aidé à améliorer l'expérience utilisateur sur différentes plateformes.  
+[Paul/Paullux](https://github.com/Paullux) : Pour le développement initial et la maintenance continue du projet. Si vous souhaitez contribuer au projet, n'hésitez pas à créer un pull request ou une issue sur notre [page GitHub](https://github.com/Bit-Scripts).  
+  
+Nous tenons à remercier tous ceux qui contribuent au succès de ce projet, que ce soit par des tests, des suggestions, des contributions de code ou simplement en partageant le projet avec d'autres.  
+  
 ## Contacts
-- Pour échanger avec nous n'hésitez pas à vous rendre sur notre [serveur Discord](https://discord.gg/6J5EX5hCeW) ainsi vous pourriez y poser des questions ou demander de l'aide sur le serveur Discord.  
-
-- Vous pouvez me contacter par Email en cas de besoin, [lien vers mon Email](mailto:paulwoisard@gmail.com)
-
+Dans un but d'amélioration constante du projet, n'hésitez à nous contacter pour nous remonter vos retour(s) ou idée(s) d'amélioration(s).  
+  
+- Pour échanger avec nous n'hésitez pas à vous rendre sur notre [serveur Discord](https://discord.gg/6J5EX5hCeW) ainsi vous pourriez y poser des questions ou demander de l'aide sur le serveur Discord.    
+- Vous pouvez me contacter par Email en cas de besoin, pour cela je vous suggère de passer soit par [Discord](https://discord.gg/6J5EX5hCeW) soit par mon [profil personnel sur github](https://github.com/Paullux) pour obtenir mon adresse Email.  
 - Vous aimez ce projet :
 Rendez-vous sur notre site, [bit-scripts.github.io](https://bit-scripts.github.io/index.html), pour y trouver nos autres réalisations.
