@@ -23,7 +23,7 @@ For the English version of this documentation page, click [here](./README-en.md)
 ### Ajout de musique :  
 ![Ajout de Musique](Ajout-Musiques.png)  
 ### En action :   
-
+https://youtu.be/vaD79dOtWSY
 [![Watch the video](./BSMusic.png)](./BSMusic.mp4)
   
 ### Discord RPC :  
