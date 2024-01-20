@@ -128,41 +128,41 @@ Nous nous engageons à lire et répondre à vos demandes.
 ## Questions Fréquentes et Dépannage
 
 ### Dans tout les cas
-- **Format de musique**
+- **Format de musique**  
 Q: Quels formats audio mon lecteur de musique peut-il lire ?   
 R: Le lecteur supporte les formats MP3, WAVE, OGG et FLAC. Si vous rencontrez des problèmes avec ces formats, assurez-vous d'avoir la dernière version complète de FFmpeg installée.   
   
-- **Où sont mes musiques**
+- **Où sont mes musiques**  
 Q: L'application ne trouve pas mes fichiers musicaux.  
 R: Vérifiez que les fichiers sont dans un format pris en charge (flac, mp3, ogg ou wav) et que le chemin d'accès est correct. 
   
-- **Pochette d'album**
+- **Pochette d'album**  
 Q: L'intégration des pochettes d'album semble ne pas fonctionner.  
 R: Les pochettes d'album doivent être au format jpg, jpeg ou png et situées dans le même dossier que les fichiers musicaux.  
   
-- **Problème de ressources**
+- **Problème de ressources**  
 Q: Pourquoi le lecteur de musique ralentit ou gèle parfois ?  
 R: Cela peut être dû à des ressources système insuffisantes, à des fichiers audio de grande taille ou à des problèmes de compatibilité. Essayez de fermer d'autres applications en cours d'exécution et de réduire la taille de votre bibliothèque musicale. Si le problème persiste, veuillez nous contacter via une isseu, [ici](https://github.com/Bit-Scripts/musique/issues).  
   
-- **Problème avec FFmpeg**
+- **Problème avec FFmpeg**  
 Q: Comment configurer FFmpeg pour qu'il fonctionne avec le lecteur de musique ?  
 R: Après avoir installé la version complète de FFmpeg, ajoutez son chemin d'accès à la variable d'environnement Path de votre système. Consultez la documentation de FFmpeg pour plus de détails ou créez une issue [ici](https://github.com/Bit-Scripts/musique/issues) pour obtenir de l'aide.  
   
 ### Installation depuis les binaires
-- **Mise à jour**
+- **Mise à jour**  
 Q: Comment puis-je mettre à jour mon lecteur de musique depuis le **binaire** ?  
 R: Visitez la page [releases](https://github.com/Bit-Scripts/musique/releases/latest) pour télécharger la dernière version. Si vous utilisez le binaire, remplacez simplement l'ancien fichier exécutable par le nouveau.
   
 ### Installation via les fichiers Python 
-- **Installation**
+- **Installation**  
 Q: Comment résoudre l'erreur "X" lors de l'installation ?  
 R: Assurez-vous que vous avez bien installé toutes les dépendances. Si le problème persiste, n'hésitez pas à créer une [issue sur notre page GitHub](https://github.com/Bit-Scripts/musique/issues). 
   
-- **Mise à jour**
+- **Mise à jour**  
 Q: Comment puis-je mettre à jour mon lecteur de musique depuis une copie des **fichiers Python** ?  
 R: Effectuer un `git pull` dans le dossier de l'application.  
   
-- **Problème lié à l'interface graphique**
+- **Problème lié à l'interface graphique**   
 Q: Que faire si l'interface graphique ne s'affiche pas correctement en lançant l'application avec Python ?  
 R: Assurez-vous que toutes les dépendances, en particulier PyQt5 et Pyqtgraph, sont correctement installées. Si le problème persiste, essayez de redémarrer l'application ou votre système.  
   
