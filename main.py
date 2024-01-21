@@ -1,5 +1,5 @@
 import platform
-if platform.system() == 'Linux':
+if platform.system() == 'Linux' or platform.system() == 'Darwin':
     import subprocess
 elif platform.system() == 'Windows':
     import psutil
@@ -8,6 +8,7 @@ from PIL import Image
 import sys
 import os
 import random
+from pathlib import Path
 import numpy as np
 from pydub import AudioSegment
 from PyQt5.QtWidgets import QMainWindow, QApplication, QWidget, QLabel, QPushButton, QVBoxLayout, QSlider, QHBoxLayout, QFileDialog, QListWidget
@@ -31,14 +32,22 @@ import threading
 from dotenv import load_dotenv
 
 # Charge les variables d'environnement du fichier .env
-extDataDir = os.getcwd()
+extDataDir = None
 if getattr(sys, 'frozen', False):
-    extDataDir = sys._MEIPASS
+    # Chemin lorsqu'exécuté en tant que bundle .app avec PyInstaller
+    if platform.system() == 'Darwin':  # macOS
+        extDataDir = Path(sys.executable).parent.parent / "Resources"
+    else:
+        extDataDir = sys._MEIPASS
+else:
+    # Chemin pour le mode de développement
+    extDataDir = os.getcwd()
+    
 load_dotenv(dotenv_path=os.path.join(extDataDir, '.env'))
 
 def is_discord_running():
     # Cette fonction vérifie si Discord est en cours d'exécution sur l'ordinateur
-    if platform.system() == 'Linux':
+    if platform.system() == 'Linux' or platform.system() == 'Darwin':
         try:
             # Remplacer par la méthode appropriée pour votre système d'exploitation
             process = subprocess.check_output(["pgrep", "Discord"])
@@ -159,7 +168,10 @@ class MusicPlayer(QMainWindow):
         
         if getattr(sys, 'frozen', False):
             # Exécuté en mode binaire
-            self.application_path = sys._MEIPASS
+            if platform.system() == 'Darwin':  # macOS
+                self.application_path = Path(sys.executable).parent.parent / "Resources"
+            else:
+                self.application_path = sys._MEIPASS
         else:
             # Exécuté en mode script
             self.application_path = os.path.dirname(os.path.abspath(__file__))
