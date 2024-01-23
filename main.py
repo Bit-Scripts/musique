@@ -69,10 +69,16 @@ if is_discord_running():
 def update_discord_rpc(title, artist, image, mainwindow):
     if is_discord_running():
         try:
+            if title == "" and artist == "" and image == "":
+                mainwindow.RPC.clear(pid=os.getpid())
+                mainwindow.RPC.close()
+                mainwindow.RPC.connect()
+                return
+            # Mise à jour de la présence avec les nouvelles informations
             mainwindow.RPC.update(details=title, state=artist, large_image=image, large_text="Entrain d'écouter")
-            print("Réussite de la mise à jour du RPC Discord")
+            print("Réussite de la mise à jour de la présence Discord")
         except Exception as e:
-            print(f"Erreur lors de la mise à jour du RPC Discord: {e}")
+            print(f"Erreur lors de la mise à jour de la présence Discord: {e}")
 
 class WaveformWorker(QThread):
     waveformReady = pyqtSignal(np.ndarray)
@@ -238,7 +244,7 @@ class MusicPlayer(QMainWindow):
     def resize_cover(self, cover_path, size=(252, 252)):
         with Image.open(cover_path) as img:
             # Redimensionner l'image
-            img.thumbnail(size, Image.LANCZOS)
+            img.thumbnail(size, Image.Resampling.LANCZOS)
 
             # Convertir en RGB si l'image est en mode RGBA
             if img.mode == 'RGBA':
@@ -253,6 +259,10 @@ class MusicPlayer(QMainWindow):
     async def envoyer_image(self, chemin_fichier, title, artist):
         if is_discord_running():
             try:
+                if chemin_fichier == "" and title == "" and artist == "":
+                    print("Aucune information fournie pour l'image, la mise à jour RPC sera vide.")
+                    threading.Thread(target=update_discord_rpc, args=("", "", "", self)).start()
+                    return
                 uploaded_image = None
                 image_path_sans_prefixe = chemin_fichier[7:] if chemin_fichier.startswith("file://") else chemin_fichier
                 if image_path_sans_prefixe in self.uploaded_images_cache:
@@ -880,9 +890,11 @@ class MusicPlayer(QMainWindow):
         self.waveformPlot.getAxis('left').setVisible(False)
         self.waveformPlot.getAxis('bottom').setVisible(False)
         if is_discord_running():
-            if self.RPC is not None:
-                self.RPC.close()
-        
+            try:
+                asyncio.create_task(self.play_track_async("", "", ""))
+                print("Réussite de la remise à zéro du RPC Discord")
+            except Exception as e:
+                print(f"Erreur lors de la tentative de retirer les infos de la connexion RPC : {e}")
         
     def apply_style_to_button(self, button, activate):
         if isinstance(button, QPushButton) and activate:
