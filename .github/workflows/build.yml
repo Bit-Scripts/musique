@@ -43,7 +43,7 @@ jobs:
       run: |
         # Les dépendances systèmes PyQt5/Audio
         sudo apt-get update
-        sudo apt-get install -y python3-pyqt5 python3-pyqt5.qtwebengine libsdl2-mixer-2.0-0 libsdl2-image-2.0-0 libsdl2-2.0-0 
+        sudo apt-get install -y python3-pyqt5 python3-pyqt5.qtwebengine libsdl2-mixer-2.0-0 libsdl2-image-2.0-0 libsdl2-2.0-0 libcairo2-dev pkg-config libgirepository1.0-dev
         python -m pip install --upgrade pip
         # Installe les requirements globaux + linux (qui rajoute numba, scipy, etc.)
         pip install -r requirements.txt
