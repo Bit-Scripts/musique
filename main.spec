@@ -18,7 +18,9 @@ data_files = [
     ('data/volume-notice.svg','data'),
     ('data/volume-up.svg','data'),
     ('data/edit-add.svg','data'),
-    ('data/edit-clear.svg','data')
+    ('data/edit-clear.svg','data'),
+    ('data/Music bot.ico','data'),
+    ('data/splashscreen.png','data')
 ]
 
 if os.path.exists('.env'):
