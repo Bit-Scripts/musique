@@ -19,4 +19,5 @@ pyimgur
 requests
 python-dotenv
 psutil
+packaging
 Pillow

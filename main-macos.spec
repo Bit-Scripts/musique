@@ -3,7 +3,7 @@
 
 a = Analysis(
     ['main.py'],
-    pathex=[],
+    pathex=['core', 'ui'],
     binaries=[],
     datas=[('data/add-one-hover.svg', 'data'),
         ('data/add-one.svg', 'data'),

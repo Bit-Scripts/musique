@@ -2,4 +2,6 @@ build/
 dist/
 venv-lecteur-multimedia/
 requirements-Test.txt
-main-test.py
+main-test.pyenv/
+env/
+.env
