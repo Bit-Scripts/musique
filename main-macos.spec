@@ -32,7 +32,7 @@ a = Analysis(
     datas=data_files,
     hiddenimports=[
         'PIL', 'PIL.Image',
-        'pydub', 'PyQt5', 'numpy', 'pygame', 'qasync', 'mutagen', 'pyimgur', 'dotenv', 'pyqtgraph', 'pypresence'
+        'pydub', 'PyQt5', 'numpy', 'qasync', 'mutagen', 'pyimgur', 'dotenv', 'pyqtgraph', 'pypresence'
     ],
     hookspath=[],
     hooksconfig={},

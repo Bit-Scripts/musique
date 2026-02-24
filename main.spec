@@ -29,7 +29,10 @@ a = Analysis(
     pathex=['core', 'ui'],
     binaries=[],
     datas=data_files,
-    hiddenimports=[],
+    hiddenimports=[
+        'PIL', 'PIL.Image',
+        'pydub', 'PyQt5', 'numpy', 'qasync', 'mutagen', 'pyimgur', 'dotenv', 'pyqtgraph', 'pypresence'
+    ],
     hookspath=[],
     hooksconfig={},
     runtime_hooks=[],
