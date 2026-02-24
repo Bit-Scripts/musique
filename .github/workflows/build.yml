@@ -3,6 +3,8 @@ name: Build Music Player
 on:
   push:
     branches: [ "main", "master" ]
+    tags:
+      - 'v*.*.*'
   pull_request:
     branches: [ "main", "master" ]
 
@@ -89,3 +91,45 @@ jobs:
         name: Musique-Linux
         path: |
           dist/*
+
+  release:
+    name: Create GitHub Release
+    needs: build
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/v')
+
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: release_assets/
+
+      - name: Zip macOS App
+        run: |
+          cd release_assets/Musique-macOS
+          zip -r ../Musique-macOS.zip BIT_SCRIPTS_-_Musique.app/
+
+      - name: Zip Linux Binaries
+        run: |
+          cd release_assets/Musique-Linux
+          zip -r ../Musique-Linux.zip *
+
+      - name: Zip Windows Exe
+        run: |
+          cd release_assets/Musique-Windows
+          zip -r ../Musique-Windows.zip *
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v2
+        with:
+          generate_release_notes: true
+          files: |
+            release_assets/Musique-macOS.zip
+            release_assets/Musique-Linux.zip
+            release_assets/Musique-Windows.zip
