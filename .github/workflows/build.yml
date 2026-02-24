@@ -9,6 +9,7 @@ on:
 jobs:
   build:
     runs-on: ${{ matrix.os }}
+    environment: musique
     strategy:
       matrix:
         os: [ubuntu-latest, macos-latest, windows-latest]
@@ -48,6 +49,12 @@ jobs:
         pip install -r requirements.txt
         pip install -r requirements-Linux.txt
         pip install pyinstaller
+
+    # Injection des Clés Secrètes dans un fichier .env virtuel
+    - name: Create .env file for Secrets
+      run: |
+        echo "IMGUR_CLIENT_ID=${{ secrets.IMGUR_CLIENT_ID }}" >> .env
+        echo "DISCORD_CLIENT_ID=${{ secrets.DISCORD_CLIENT_ID }}" >> .env
 
     # Création de l'exécutable
     - name: Build executable (Windows/Linux)
