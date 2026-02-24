@@ -757,6 +757,13 @@ def main():
     player = MusicPlayer(app_path)
     player.show()
 
+    # Fermeture du splashscreen Pyinstaller généré (Image)
+    try:
+        import pyi_splash
+        pyi_splash.close()
+    except Exception:
+        pass
+
     async def check_for_updates_task():
         checker = UpdateChecker(current_version="1.0.0", github_repo="Paul123321/Bit-Scripts")
         has_update, new_ver, url = await checker.check_for_updates()

@@ -42,9 +42,17 @@ a = Analysis(
 )
 pyz = PYZ(a.pure)
 
+splash = Splash('data/splashscreen.png',
+                binaries=a.binaries,
+                datas=a.datas,
+                text_pos=None,
+                text_size=12,
+                minify_script=True)
+
 exe = EXE(
     pyz,
     a.scripts,
+    splash,
     [],
     exclude_binaries=True,
     name='BIT_SCRIPTS_-_Musique',
@@ -58,11 +66,13 @@ exe = EXE(
     target_arch=None,
     codesign_identity=None,
     entitlements_file=None,
+    icon='data/Music bot.icns',
 )
 coll = COLLECT(
     exe,
     a.binaries,
     a.datas,
+    splash.binaries,
     strip=False,
     upx=True,
     upx_exclude=[],
