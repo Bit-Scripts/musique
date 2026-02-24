@@ -1,11 +1,9 @@
 # -*- mode: python ; coding: utf-8 -*-
 
 
-a = Analysis(
-    ['main.py'],
-    pathex=['core', 'ui'],
-    binaries=[],
-    datas=[('data/add-one-hover.svg', 'data'),
+import os
+data_files = [
+    ('data/add-one-hover.svg', 'data'),
     ('data/add-one.svg', 'data'),
     ('data/close-one-hover.svg', 'data'),
     ('data/close-one.svg', 'data'),
@@ -20,9 +18,17 @@ a = Analysis(
     ('data/volume-notice.svg','data'),
     ('data/volume-up.svg','data'),
     ('data/edit-add.svg','data'),
-    ('data/edit-clear.svg','data'),
-    ('./.env','.')
-    ],
+    ('data/edit-clear.svg','data')
+]
+
+if os.path.exists('.env'):
+    data_files.append(('.env', '.'))
+
+a = Analysis(
+    ['main.py'],
+    pathex=['core', 'ui'],
+    binaries=[],
+    datas=data_files,
     hiddenimports=[],
     hookspath=[],
     hooksconfig={},

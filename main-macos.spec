@@ -1,31 +1,37 @@
 # -*- mode: python ; coding: utf-8 -*-
 
 
+import os
+data_files = [
+    ('data/add-one-hover.svg', 'data'),
+    ('data/add-one.svg', 'data'),
+    ('data/close-one-hover.svg', 'data'),
+    ('data/close-one.svg', 'data'),
+    ('data/Music bot.png','data'),
+    ('data/reduce-one-hover.svg','data'),
+    ('data/reduce-one.svg','data'),
+    ('data/refresh-1.svg','data'),
+    ('data/refresh.svg','data'),
+    ('data/shuffle.svg','data'),
+    ('data/volume-down.svg','data'),
+    ('data/volume-mute.svg','data'),
+    ('data/volume-notice.svg','data'),
+    ('data/volume-up.svg','data'),
+    ('data/edit-add.svg','data'),
+    ('data/edit-clear.svg','data'),
+    ('data/Music bot.icns','data')
+]
+
+if os.path.exists('.env'):
+    data_files.append(('.env', '.'))
+
 a = Analysis(
     ['main.py'],
     pathex=['core', 'ui'],
     binaries=[],
-    datas=[('data/add-one-hover.svg', 'data'),
-        ('data/add-one.svg', 'data'),
-        ('data/close-one-hover.svg', 'data'),
-        ('data/close-one.svg', 'data'),
-        ('data/Music bot.png','data'),
-        ('data/reduce-one-hover.svg','data'),
-        ('data/reduce-one.svg','data'),
-        ('data/refresh-1.svg','data'),
-        ('data/refresh.svg','data'),
-        ('data/shuffle.svg','data'),
-        ('data/volume-down.svg','data'),
-        ('data/volume-mute.svg','data'),
-        ('data/volume-notice.svg','data'),
-        ('data/volume-up.svg','data'),
-        ('data/edit-add.svg','data'),
-        ('data/edit-clear.svg','data'),
-        ('data/Music bot.icns','data'),
-        ('./.env','.')
-        ],
+    datas=data_files,
     hiddenimports=[
-        'PIL', 'PIL.Image'
+        'PIL', 'PIL.Image',
         'pydub', 'PyQt5', 'numpy', 'pygame', 'qasync', 'mutagen', 'pyimgur', 'dotenv', 'pyqtgraph', 'pypresence'
     ],
     hookspath=[],
