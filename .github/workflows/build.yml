@@ -112,18 +112,19 @@ jobs:
 
       - name: Zip macOS App
         run: |
-          cd release_assets/Musique-macOS
-          zip -r ../Musique-macOS.zip BIT_SCRIPTS_-_Musique.app/
+          cd release_assets
+          mv Musique-macOS BIT_SCRIPTS_-_Musique.app
+          zip -r Musique-macOS.zip BIT_SCRIPTS_-_Musique.app/
 
       - name: Zip Linux Binaries
         run: |
           cd release_assets/Musique-Linux
-          zip -r ../Musique-Linux.zip *
+          zip -r ../Musique-Linux.zip .
 
       - name: Zip Windows Exe
         run: |
           cd release_assets/Musique-Windows
-          zip -r ../Musique-Windows.zip *
+          zip -r ../Musique-Windows.zip .
 
       - name: Create Release
         uses: softprops/action-gh-release@v2
