@@ -42,17 +42,9 @@ a = Analysis(
 )
 pyz = PYZ(a.pure)
 
-splash = Splash('data/splashscreen.png',
-                binaries=a.binaries,
-                datas=a.datas,
-                text_pos=None,
-                text_size=12,
-                minify_script=True)
-
 exe = EXE(
     pyz,
     a.scripts,
-    splash,
     [],
     exclude_binaries=True,
     name='BIT_SCRIPTS_-_Musique',
@@ -72,10 +64,10 @@ coll = COLLECT(
     exe,
     a.binaries,
     a.datas,
-    splash.binaries,
     strip=False,
     upx=True,
     upx_exclude=[],
+
     name='BIT_SCRIPTS_-_Musique',
 )
 app = BUNDLE(
