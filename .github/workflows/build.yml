@@ -53,8 +53,8 @@ jobs:
     # Injection des Clés Secrètes dans un fichier .env virtuel
     - name: Create .env file for Secrets
       run: |
-        echo "IMGUR_CLIENT_ID=${{ secrets.IMGUR_CLIENT_ID }}" >> .env
-        echo "DISCORD_CLIENT_ID=${{ secrets.DISCORD_CLIENT_ID }}" >> .env
+        echo "IMGUR_CLIENT_ID=${{ vars.IMGUR_CLIENT_ID }}" >> .env
+        echo "DISCORD_CLIENT_ID=${{ vars.DISCORD_CLIENT_ID }}" >> .env
 
     # Création de l'exécutable
     - name: Build executable (Windows/Linux)
